@@ -17,7 +17,7 @@ public class OutputWriter {
     }
 
     public static void writeOutputForClusters(int iter, Particle[] particles1, Particle[] particles2, int N) throws IOException {
-        File file = prepareOutputFile("cumulus", iter, N);
+        File file = prepareOutputFile("clusters", iter, N);
         StringBuilder sb = new StringBuilder();
         appendParticlesFormatted(sb, particles1, N); // mismo bucle con N
         appendParticlesFormatted(sb, particles2, N); // mismo bucle con N
