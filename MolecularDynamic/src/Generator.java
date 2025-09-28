@@ -102,7 +102,7 @@ public class Generator {
 
     public static void main(String[] args) throws IOException {
         if (args.length != 3) {
-            System.out.println("Usage: N iterations single/clusters");
+            System.out.print("Usage: N iterations single/clusters\n");
             return;
         }
         int N = Integer.parseInt(args[0]);
