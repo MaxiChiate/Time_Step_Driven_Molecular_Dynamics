@@ -23,8 +23,8 @@
 hs_err_pid*
 replay_pid*
 
-/inputs
+/MolecularDynamic/inputs
 /.idea
 /MolecularDynamic/.idea
-
+/MolecularDynamic/outputs
 /*.iml

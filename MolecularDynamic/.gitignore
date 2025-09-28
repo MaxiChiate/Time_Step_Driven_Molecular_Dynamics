@@ -30,3 +30,7 @@
 #
 #*/*.xml
 #.idea
+
+/inputs
+/outputs
+/MolecularDynamic.iml
