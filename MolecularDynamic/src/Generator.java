@@ -62,6 +62,13 @@ public class Generator {
             double vx = u[0];
             double vy = u[1];
             double vz = u[2];
+//            if(i == 0)  {
+//                particles[i] = new Particle(particleId++,x, y, z, vx, vy, vz, MASS*330_000);
+//            }
+//            else {
+//
+//                particles[i] = new Particle(particleId++,x, y, z, vx, vy, vz, MASS);
+//            }
             particles[i] = new Particle(particleId++,x, y, z, vx, vy, vz, MASS);
         }
 

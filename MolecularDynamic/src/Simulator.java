@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class Simulator {
@@ -9,7 +10,7 @@ public class Simulator {
     private final double deltaT;
     private double t=0.0;
     private final double maxT;
-    private ArrayList<Particle> particles;
+    private final ArrayList<Particle> particles;
 
     public Simulator(ArrayList<Particle> particles, Scheme scheme, double deltaT, double maxT, Path file) throws IOException {
         this.particles = particles;
@@ -21,9 +22,18 @@ public class Simulator {
     public void executeSimulation(Path outputPath) throws IOException {
 
         try (OutputWriter out = OutputWriter.open(outputPath)) {
+
+            List<double[]> acc = new ArrayList<>();
+
+            for (Particle p : particles) {
+                double[] f = Integrator.computeForce(p, particles);
+                acc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+            }
             while (t<=maxT){
                 out.writeStep(particles, t);
-//              TODO: SIMULATION
+
+                Integrator.updateParticlesBeeman(particles, deltaT, acc);
+
                 t+=deltaT;
                 printProgress(t, maxT);
             }
