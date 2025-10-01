@@ -32,6 +32,17 @@ public class OutputWriter implements AutoCloseable {
         return new OutputWriter(path);
     }
 
+//--------FOR DAMPED OSCILATOR-------------------------------------------------------------
+
+ public void writeStepDamped(DampedOscillator d, double time) throws IOException {
+     sb.setLength(0);
+     fmt.format("%.4f%n", time);
+     fmt.format(
+                 "%.17g,%.17g,%.5f%n",
+                 d.x(), d.vx(), d.mass());
+     bw.write(sb.toString());
+ }
+
 //---------FOR GALAXY SIMULATION ----------------------------------------------------------
 public void writeStep(List<Particle> particles, double time) throws IOException {
     sb.setLength(0);
