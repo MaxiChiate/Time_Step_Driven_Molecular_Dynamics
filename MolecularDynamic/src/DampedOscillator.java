@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.Format;
+import java.util.Locale;
 
 public class DampedOscillator {
     private final static double k = 10000;
@@ -25,18 +27,22 @@ public class DampedOscillator {
     private double t;
     private double aPrev;
     private double xPrev;
+    private double vPrev;
 
     public double acceleration (double x, double v){
         return (-k*x - gamma*v)/m;
     }
 
     public DampedOscillator(double x0, double v0, double dt) {
-        this.dt  = dt;
+        this.dt=dt;
         this.x=x0;
         this.v=v0;
         this.t=0;
+        //for Beeman
         this.aPrev=acceleration(x0, v0);
-        this.xPrev=x0;
+        //for Verlet
+        this.vPrev=v*acceleration(x0, v0)*dt;
+        this.xPrev = x0 - v0 * dt + 0.5 * acceleration(x,v) * dt * dt;
     }
 
     private void stepBeeman() {
@@ -56,17 +62,22 @@ public class DampedOscillator {
         t += dt;
     }
 
-    private void stepOriginalVerlet() {;
-        double aNow = acceleration(x, v);
-        double xNext = 2.0 * x - xPrev + dt*dt * aNow;
-        double vNext = (xNext - xPrev) / (2.0 * dt);
+    private void stepOriginalVerlet(OutputWriter out) throws IOException {
+        double aNow  = acceleration(x, v);
+        double xNext = 2.0 * x - xPrev + aNow * dt * dt;
 
+        double vAt_t = (xNext - xPrev) / (2.0 * dt);
+
+        double oldV = v;
+        v = vAt_t;
+        out.writeStepDampedVerlet(this, t);
+        v = oldV;
         xPrev = x;
-        x = xNext;
-        v = vNext;
-        aPrev = aNow;
-        t += dt;
+        x     = xNext;
+        v     = vAt_t;
+        t    += dt;
     }
+
 
     private void calculateDerivative(double x, double v){
         r0=x;
@@ -94,7 +105,7 @@ public class DampedOscillator {
 
         double R2 = a*dt*dt/2;
 
-        double r0C =r0P + C0 *R2;
+        double r0C=r0P + C0 *R2;
         double r1C=r1P + C1 * R2/dt;
         double r2C=r2P + C2 * R2*2.0/Math.pow(dt,2);
         double r3C=r3P + C3 * R2*6.0/Math.pow(dt,3);
@@ -120,23 +131,38 @@ public class DampedOscillator {
     public double deltaT()   { return dt; }
     public double maxT()     { return maxT; }
     public double mass()     { return m; }
+    public double vPrev()    { return vPrev;}
+    public double xPrev()    { return xPrev;}
 
     public void simulate(Path directory, Scheme scheme) throws IOException {
         Files.createDirectories(directory);
+        String dtString = String.format(Locale.US,"%.3f", dt);
         String fileName = switch (scheme) {
-            case BEEMAN -> "beeman.csv";
-            case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> "gear_order_5.csv";
-            case ORIGINAL_VERLET -> "original_verlet.csv";
-            case null -> "theoretical.csv";
+
+            case BEEMAN -> "beeman"+dtString+".csv";
+            case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> "gear_order_5"+dtString+".csv";
+            case ORIGINAL_VERLET -> "original_verlet"+dtString+".csv";
+            case null -> "theoretical"+dtString+".csv";
         };
         try (OutputWriter out = OutputWriter.open(directory.resolve(fileName))) {
             while (t() <= maxT()) {
-                out.writeStepDamped(this, t());
                 switch (scheme) {
-                    case BEEMAN -> stepBeeman();
-                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> stepGearOrder5();
-                    case ORIGINAL_VERLET -> stepOriginalVerlet();
-                    case null -> stepTheoretical();
+                    case BEEMAN -> {
+                        out.writeStepDamped(this, t());
+                        stepBeeman();
+                    }
+                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> {
+                        out.writeStepDamped(this, t());
+                        stepGearOrder5();
+                    }
+                    case ORIGINAL_VERLET -> {
+                        stepOriginalVerlet(out);
+//                        out.writeStepDampedVerlet(this, t());
+                    }
+                    case null -> {
+                        out.writeStepDamped(this, t());
+                        stepTheoretical();
+                    }
                 }
             }
         }
@@ -145,9 +171,17 @@ public class DampedOscillator {
     public static void main(String[] args) throws IOException {
         double x0 = 1.0;
         double v0 = - gamma/(2*m);
-        double dt = 0.03;
 
-        DampedOscillator oscBeeman = new DampedOscillator(x0, v0, dt );
+        simulateForDT(x0, v0, 0.100);
+        simulateForDT(x0, v0, 0.050);
+        simulateForDT(x0, v0, 0.010);
+//        simulateForDT(x0, v0, 0.005);
+//        simulateForDT(x0, v0, 0.001);
+
+    }
+
+    private static void simulateForDT(double x0, double v0, double dt) throws IOException {
+        DampedOscillator oscBeeman = new DampedOscillator(x0, v0, dt);
         DampedOscillator oscGear = new DampedOscillator(x0, v0, dt);
         DampedOscillator oscVerlet = new DampedOscillator(x0, v0, dt);
         DampedOscillator oscTheo = new DampedOscillator(x0, v0, dt);
