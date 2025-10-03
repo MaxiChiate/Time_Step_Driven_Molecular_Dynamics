@@ -107,11 +107,11 @@ public class DampedOscillator {
     }
 
     private void stepTheoretical(){
+        t+=dt;
         double beta = gamma/(2*m);
         double wd = Math.pow((k / m) - beta*beta, 0.5);
         x = 1 * Math.exp(-beta*t)*Math.cos(wd*t);
         v = 1 * Math.exp(-beta*t)*(-beta * Math.cos(wd *t) - wd * Math.sin(wd *t));
-        t+=dt;
     }
 
     public double x()        { return x; }
