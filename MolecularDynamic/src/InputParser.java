@@ -35,11 +35,13 @@ public class InputParser {
                     System.out.printf("Number Format exception: '%s'\n", line);
                 }
             }
-            if (particles.size() != particles_amount) {
+//            System.out.println(inputPath + " particles parsed successfully.");
+            if ((inputPath.contains("single") && particles.size() != particles_amount )||
+                    (inputPath.contains("clusters") && particles.size() != 2*particles_amount)) {
                 throw new IllegalArgumentException("Number of particles does not match the expected amount");
             }
         } catch (Exception e) {
-            System.out.print("Error while parsing input\n");
+            System.out.print("Error while parsing input: " + e.getMessage());
             exit(1);
         }
         return  particles;

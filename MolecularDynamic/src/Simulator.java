@@ -1,9 +1,12 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Timer;
 
 public class Simulator {
 
@@ -11,30 +14,55 @@ public class Simulator {
     private double t=0.0;
     private final double maxT;
     private final ArrayList<Particle> particles;
+    private final Scheme scheme;
 
     public Simulator(ArrayList<Particle> particles, Scheme scheme, double deltaT, double maxT, Path file) throws IOException {
         this.particles = particles;
         this.maxT = maxT;
         this.deltaT = deltaT;
+        this.scheme = scheme;
         executeSimulation(file);
     }
 
     public void executeSimulation(Path outputPath) throws IOException {
-
         try (OutputWriter out = OutputWriter.open(outputPath)) {
 
-            List<double[]> acc = new ArrayList<>();
+            // Para Beeman se necesita aceleración previa
+            List<double[]> prevAcc = new ArrayList<>();
+            // Para verlet original las posiciones iniciales
+            List<double[]> prevPos = new ArrayList<>();
 
-            for (Particle p : particles) {
-                double[] f = Integrator.computeForce(p, particles);
-                acc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+            switch (scheme) {
+                case BEEMAN :
+                    for (Particle p : particles) {
+                        double[] f = Integrator.computeForce(p, particles);
+                        prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+                    }; break;
+                case ORIGINAL_VERLET:
+                    for (Particle p : particles) {
+                        double[] f = Integrator.computeForce(p, particles);
+                        prevPos.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+                    }; break;
+                case GEAR_PREDICTOR_CORRECTOR_ORDER_5: break;
             }
-            while (t<=maxT){
-                out.writeStep(particles, t);
 
-                Integrator.updateParticlesBeeman(particles, deltaT, acc);
+            double tToWrite = 0.0;
 
-                t+=deltaT;
+            while (t <= maxT) {
+//                if(t >= tToWrite) {
+
+                    out.writeStep(particles, t);
+//                    tToWrite += 0.1;
+//                }
+
+                switch (scheme) {
+                    case ORIGINAL_VERLET -> Integrator.updateParticlesVerlet(particles, deltaT, prevPos);
+//                    case VELOCITY_VERLET -> Integrator.updateParticlesVelocityVerlet(particles, deltaT);
+                    case BEEMAN -> Integrator.updateParticlesBeeman(particles, deltaT, prevAcc);
+                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> Integrator.updateParticlesGear5(particles, deltaT);
+                }
+
+                t += deltaT;
                 printProgress(t, maxT);
             }
         }
@@ -63,19 +91,33 @@ public class Simulator {
             System.out.print("Example: 200 1 inputs outputs vt cluster 0.1 10");
             return;
         }
+        Instant start = Instant.now();
 
-        for (int i = 0; i < iterations; i++) {
-            InputParser parser = new InputParser(inputDir +"/" + mode +"/N" + N + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
-            ArrayList<Particle> particles = parser.parseInputs();
+//        while(N<=2000) {
+//        for(double dt = deltaT; dt <= 0.09; dt *= 10) {
+            for (int i = 0; i < iterations; i++) {
+                InputParser parser = new InputParser(inputDir + "/" + mode + "/N" + N + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
+                ArrayList<Particle> particles = parser.parseInputs();
 
-            Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N_" + N));
-            Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.3f", deltaT), maxT, String.format("%04d", i)));
-            System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);
-            Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
-            System.out.printf("\nIteration " + (i + 1) + " completed.");
-        }
+                Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N_" + N));
+                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.3f", deltaT), maxT, String.format("%04d", i)));
+                System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);
+//                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
+                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
+                System.out.printf("\nIteration " + (i + 1) + " completed.");
+            }
+//        }
+//            N+=100;
+//        }
 
+        Instant end = Instant.now();
+        Duration elapsed = Duration.between(start, end);
 
+        long hours = elapsed.toHours();
+        long minutes = elapsed.toMinutesPart();
+        long seconds = elapsed.toSecondsPart();
+
+        System.out.printf("Tiempo transcurrido: %02d:%02d:%02d%n", hours, minutes, seconds);
 
 
 
