@@ -136,7 +136,7 @@ public class DampedOscillator {
 
     public void simulate(Path directory, Scheme scheme) throws IOException {
         Files.createDirectories(directory);
-        String dtString = String.format(Locale.US,"%.3f", dt);
+        String dtString = String.format(Locale.US,"%.9f", dt);
         String fileName = switch (scheme) {
 
             case BEEMAN -> "beeman"+dtString+".csv";
@@ -172,12 +172,17 @@ public class DampedOscillator {
         double x0 = 1.0;
         double v0 = - gamma/(2*m);
 
-        simulateForDT(x0, v0, 0.100);
-        simulateForDT(x0, v0, 0.050);
-        simulateForDT(x0, v0, 0.010);
-//        simulateForDT(x0, v0, 0.005);
-//        simulateForDT(x0, v0, 0.001);
+        //simulates until 10^-8
+        int maxPower = 8;
 
+        for (int e = 1; e <= maxPower; e++) {
+            double dt1 = Math.pow(10.0, -e);
+            simulateForDT(x0, v0, dt1);
+            if (e < maxPower) {
+                double dt2 = 5.0 * Math.pow(10.0, -(e + 1));
+                simulateForDT(x0, v0, dt2);
+            }
+        }
     }
 
     private static void simulateForDT(double x0, double v0, double dt) throws IOException {
