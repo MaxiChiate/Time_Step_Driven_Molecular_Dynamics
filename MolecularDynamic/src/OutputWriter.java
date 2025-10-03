@@ -37,11 +37,20 @@ public class OutputWriter implements AutoCloseable {
  public void writeStepDamped(DampedOscillator d, double time) throws IOException {
      sb.setLength(0);
      fmt.format("%.4f%n", time);
+
      fmt.format(
                  "%.17g,%.17g,%.5f%n",
                  d.x(), d.vx(), d.mass());
      bw.write(sb.toString());
  }
+    public void writeStepDampedVerlet(DampedOscillator d, double t) throws IOException {
+        sb.setLength(0);
+        fmt.format("%.4f%n", t);
+        fmt.format(
+                "%.17g,%.17g,%.5f%n",
+                d.xPrev(), d.vPrev(), d.mass());
+        bw.write(sb.toString());
+    }
 
 //---------FOR GALAXY SIMULATION ----------------------------------------------------------
 public void writeStep(List<Particle> particles, double time) throws IOException {
@@ -53,14 +62,7 @@ public void writeStep(List<Particle> particles, double time) throws IOException 
     bw.write(sb.toString());
 }
 
-    public void writeStepDampedVerlet(DampedOscillator d, double t) throws IOException {
-        sb.setLength(0);
-        fmt.format("%.4f%n", t);
-        fmt.format(
-                "%.17g,%.17g,%.5f%n",
-                d.xPrev(), d.vPrev(), d.mass());
-        bw.write(sb.toString());
-    }
+
 //----------FOR GALAXY INPUT GENERATION----------------------------------------------------
     public static void writeOutputForSingle(int iter, Particle[] particles, int N) throws IOException {
         File file = prepareOutputFile("single", iter, N);
