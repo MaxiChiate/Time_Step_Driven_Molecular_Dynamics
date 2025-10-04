@@ -17,7 +17,7 @@ public class Simulator {
     private final Scheme scheme;
 
     // Cantidad deseada de outputs totales (ajustable)
-    private static final int targetOutputs = 100;
+    private static final int targetOutputs = 150;
 
     private final double writeInterval;
     private double nextWriteTime;
@@ -51,7 +51,7 @@ public class Simulator {
                     break;
 
                 case ORIGINAL_VERLET:
-//                    Integrator.initPrevPositions(particles, t, prevPos);
+                    Integrator.initPrevPositions(particles, t, prevPos);
                     break;
 
                 case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
