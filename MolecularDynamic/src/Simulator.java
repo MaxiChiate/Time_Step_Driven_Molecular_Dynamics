@@ -16,11 +16,21 @@ public class Simulator {
     private final ArrayList<Particle> particles;
     private final Scheme scheme;
 
+    // Cantidad deseada de outputs totales (ajustable)
+    private static final int targetOutputs = 100;
+
+    private final double writeInterval;
+    private double nextWriteTime;
+
+
     public Simulator(ArrayList<Particle> particles, Scheme scheme, double deltaT, double maxT, Path file) throws IOException {
         this.particles = particles;
         this.maxT = maxT;
         this.deltaT = deltaT;
         this.scheme = scheme;
+
+        writeInterval = maxT / targetOutputs;
+        nextWriteTime = writeInterval;
         executeSimulation(file);
     }
 
@@ -37,27 +47,25 @@ public class Simulator {
                     for (Particle p : particles) {
                         double[] f = Integrator.computeForce(p, particles);
                         prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-                    }; break;
+                    };
+                    break;
+
                 case ORIGINAL_VERLET:
-                    for (Particle p : particles) {
-                        double[] f = Integrator.computeForce(p, particles);
-                        prevPos.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-                    }; break;
-                case GEAR_PREDICTOR_CORRECTOR_ORDER_5: break;
+//                    Integrator.initPrevPositions(particles, t, prevPos);
+                    break;
+
+                case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
+                    break;
             }
 
-            double tToWrite = 0.0;
-
             while (t <= maxT) {
-//                if(t >= tToWrite) {
-
+                if (t >= nextWriteTime) {
                     out.writeStep(particles, t);
-//                    tToWrite += 0.1;
-//                }
+                    nextWriteTime += writeInterval;
+                }
 
                 switch (scheme) {
                     case ORIGINAL_VERLET -> Integrator.updateParticlesVerlet(particles, deltaT, prevPos);
-//                    case VELOCITY_VERLET -> Integrator.updateParticlesVelocityVerlet(particles, deltaT);
                     case BEEMAN -> Integrator.updateParticlesBeeman(particles, deltaT, prevAcc);
                     case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> Integrator.updateParticlesGear5(particles, deltaT);
                 }
@@ -65,6 +73,7 @@ public class Simulator {
                 t += deltaT;
                 printProgress(t, maxT);
             }
+
         }
     }
 
@@ -122,4 +131,7 @@ public class Simulator {
 
 
     }
+
+
+
 }

@@ -15,8 +15,8 @@ public class OutputWriter implements AutoCloseable {
     private final BufferedWriter bw;
     private final StringBuilder sb;
     private final Formatter fmt;
-    private double tToPrint=0;
-    private static final double printDt=0.001;
+//    private double tToPrint=0;
+//    private static final double printDt=0.001;
 
     private OutputWriter(Path path) throws IOException {
         this.bw = Files.newBufferedWriter(
@@ -37,26 +37,26 @@ public class OutputWriter implements AutoCloseable {
 //--------FOR DAMPED OSCILATOR-------------------------------------------------------------
 
  public void writeStepDamped(DampedOscillator d, double time) throws IOException {
-     if (time>=tToPrint) {
+//     if (time>=tToPrint) {
          sb.setLength(0);
          fmt.format("%.4f%n", time);
          fmt.format(
                  "%.17g,%.17g,%.5f%n",
                  d.x(), d.vx(), d.mass());
          bw.write(sb.toString());
-         tToPrint+=printDt;
-     }
+//         tToPrint+=printDt;
+//     }
  }
     public void writeStepDampedVerlet(DampedOscillator d, double t) throws IOException {
-        if (t>=tToPrint) {
+//        if (t>=tToPrint) {
             sb.setLength(0);
             fmt.format("%.4f%n", t);
             fmt.format(
                     "%.17g,%.17g,%.5f%n",
                     d.xPrev(), d.vPrev(), d.mass());
             bw.write(sb.toString());
-            tToPrint+=printDt;
-        }
+//            tToPrint+=printDt;
+//        }
     }
 
 //---------FOR GALAXY SIMULATION ----------------------------------------------------------
