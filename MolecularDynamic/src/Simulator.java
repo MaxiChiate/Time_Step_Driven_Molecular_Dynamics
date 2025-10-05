@@ -38,6 +38,8 @@ public class Simulator {
 
             // Para Beeman se necesita aceleración previa
             List<double[]> prevAcc = new ArrayList<>();
+            double[][][] r = new double[3][][];
+            double[][][] predictR = new double[3][][];
 
             switch (scheme) {
                 case BEEMAN :
@@ -48,9 +50,10 @@ public class Simulator {
                     break;
 
                 case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
+                    GalaxyIntegrator.initGear(particles, deltaT, r, predictR);
                     break;
             }
-
+            out.writeStep(particles, t);
             while (t <= maxT) {
                 if (t >= nextWriteTime) {
                     out.writeStep(particles, t);
@@ -60,7 +63,7 @@ public class Simulator {
                 switch (scheme) {
                     case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerlet(particles, deltaT);
                     case BEEMAN -> GalaxyIntegrator.updateParticlesBeeman(particles, deltaT, prevAcc);
-                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> GalaxyIntegrator.updateParticlesGear5(particles, deltaT);
+                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> GalaxyIntegrator.updateParticlesGear5(particles, deltaT, r, predictR);
                 }
 
                 t += deltaT;
@@ -102,7 +105,7 @@ public class Simulator {
                 ArrayList<Particle> particles = parser.parseInputs();
 
                 Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N_" + N));
-                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.3f", deltaT), maxT, String.format("%04d", i)));
+                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", deltaT), maxT, String.format("%04d", i)));
                 System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);
 //                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
                 Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);

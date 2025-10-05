@@ -1,10 +1,19 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class GalaxyIntegrator {
 
     static private final double G = 1.0;
     static private final double H = 0.05;
+
+    private static final double C0 = 3.0 / 20.0;
+    private static final double C1 = 251.0 / 360.0;
+    private static final double C2 = 1.0;
+    private static final double C3 = 11.0 / 18.0;
+    private static final double C4 = 1.0 / 6.0;
+    private static final double C5 = 1.0 / 60.0;
+
 
     private GalaxyIntegrator() {
         throw new RuntimeException(this + ": Not instantiable");
@@ -132,9 +141,125 @@ public class GalaxyIntegrator {
         }
     }
 
-    public static void updateParticlesGear5(List<Particle> particles, double dt) {
-        // Gear predictor-corrector orden 5
+    public static void initGear(List<Particle> particles, double dt, double[][][] r, double[][][] p) {
+        int N = particles.size();
+        r[0] = new double[6][N]; r[1] = new double[6][N]; r[2] = new double[6][N];
+        p[0] = new double[6][N]; p[1] = new double[6][N]; p[2] = new double[6][N];
+        for (int i = 0; i < N; i++) {
+            Particle part = particles.get(i);
+            r[0][0][i] = part.getX();  r[1][0][i] = part.getY();  r[2][0][i] = part.getZ();
+            r[0][1][i] = part.getVx(); r[1][1][i] = part.getVy(); r[2][1][i] = part.getVz();
+        }
+        for (int i = 0; i < N; i++) {
+            Particle pi = particles.get(i);
+            double[] f = computeForce(pi, particles);
+            r[0][2][i] = f[0] / pi.getMass();
+            r[1][2][i] = f[1] / pi.getMass();
+            r[2][2][i] = f[2] / pi.getMass();
+        }
+        for (int k = 3; k <= 5; k++) {
+            Arrays.fill(r[0][k], 0.0);
+            Arrays.fill(r[1][k], 0.0);
+            Arrays.fill(r[2][k], 0.0);
+        }
     }
+
+    public static void updateParticlesGear5(List<Particle> particles, double dt, double[][][] r, double[][][] p) {
+        final int N = particles.size();
+        final double dt1 = dt, dt2 = dt1*dt, dt3 = dt2*dt, dt4 = dt3*dt, dt5 = dt4*dt;
+        for (int i = 0; i < N; i++) {
+            // X
+            double r0 = r[0][0][i], r1 = r[0][1][i], r2 = r[0][2][i], r3 = r[0][3][i], r4 = r[0][4][i], r5 = r[0][5][i];
+            p[0][0][i] = r0 + r1*dt1 + r2*dt2/2.0 + r3*dt3/6.0 + r4*dt4/24.0 + r5*dt5/120.0;
+            p[0][1][i] = r1 + r2*dt1 + r3*dt2/2.0 + r4*dt3/6.0 + r5*dt4/24.0;
+            p[0][2][i] = r2 + r3*dt1 + r4*dt2/2.0 + r5*dt3/6.0;
+            p[0][3][i] = r3 + r4*dt1 + r5*dt2/2.0;
+            p[0][4][i] = r4 + r5*dt1;
+            p[0][5][i] = r5;
+
+            // Y
+            r0=r[1][0][i]; r1=r[1][1][i]; r2=r[1][2][i]; r3=r[1][3][i]; r4=r[1][4][i]; r5=r[1][5][i];
+            p[1][0][i] = r0 + r1*dt1 + r2*dt2/2.0 + r3*dt3/6.0 + r4*dt4/24.0 + r5*dt5/120.0;
+            p[1][1][i] = r1 + r2*dt1 + r3*dt2/2.0 + r4*dt3/6.0 + r5*dt4/24.0;
+            p[1][2][i] = r2 + r3*dt1 + r4*dt2/2.0 + r5*dt3/6.0;
+            p[1][3][i] = r3 + r4*dt1 + r5*dt2/2.0;
+            p[1][4][i] = r4 + r5*dt1;
+            p[1][5][i] = r5;
+
+            // Z
+            r0=r[2][0][i]; r1=r[2][1][i]; r2=r[2][2][i]; r3=r[2][3][i]; r4=r[2][4][i]; r5=r[2][5][i];
+            p[2][0][i] = r0 + r1*dt1 + r2*dt2/2.0 + r3*dt3/6.0 + r4*dt4/24.0 + r5*dt5/120.0;
+            p[2][1][i] = r1 + r2*dt1 + r3*dt2/2.0 + r4*dt3/6.0 + r5*dt4/24.0;
+            p[2][2][i] = r2 + r3*dt1 + r4*dt2/2.0 + r5*dt3/6.0;
+            p[2][3][i] = r3 + r4*dt1 + r5*dt2/2.0;
+            p[2][4][i] = r4 + r5*dt1;
+            p[2][5][i] = r5;
+        }
+
+        for (int i = 0; i < N; i++) {
+            particles.get(i).setPosition(p[0][0][i], p[1][0][i], p[2][0][i]);
+        }
+
+        double[] R2x = new double[N], R2y = new double[N], R2z = new double[N];
+        for (int i = 0; i < N; i++) {
+            Particle pi = particles.get(i);
+            double[] fP = computeForce(pi, particles);
+            double axP = fP[0] / pi.getMass(), ayP = fP[1] / pi.getMass(), azP = fP[2]/ pi.getMass();;
+
+            double dAx = axP - p[0][2][i];
+            double dAy = ayP - p[1][2][i];
+            double dAz = azP - p[2][2][i];
+
+            R2x[i] = dAx * dt2 * 0.5;
+            R2y[i] = dAy * dt2 * 0.5;
+            R2z[i] = dAz * dt2 * 0.5;
+        }
+
+        final double invDt  = 1.0 / dt;
+        final double invDt2 = invDt * invDt;
+        final double invDt3 = invDt2 * invDt;
+        final double invDt4 = invDt3 * invDt;
+        final double invDt5 = invDt4 * invDt;
+
+        for (int i = 0; i < N; i++) {
+            // X
+            double r0C = p[0][0][i] + C0 * R2x[i];
+            double r1C = p[0][1][i] + C1 * (R2x[i] * invDt);
+            double r2C = p[0][2][i] + C2 * (2.0 * R2x[i] * invDt2);
+            double r3C = p[0][3][i] + C3 * (6.0 * R2x[i] * invDt3);
+            double r4C = p[0][4][i] + C4 * (24.0 * R2x[i] * invDt4);
+            double r5C = p[0][5][i] + C5 * (120.0 * R2x[i] * invDt5);
+
+            r[0][0][i]=r0C; r[0][1][i]=r1C; r[0][2][i]=r2C; r[0][3][i]=r3C; r[0][4][i]=r4C; r[0][5][i]=r5C;
+
+            // Y
+            r0C = p[1][0][i] + C0 * R2y[i];
+            r1C = p[1][1][i] + C1 * (R2y[i] * invDt);
+            r2C = p[1][2][i] + C2 * (2.0 * R2y[i] * invDt2);
+            r3C = p[1][3][i] + C3 * (6.0 * R2y[i] * invDt3);
+            r4C = p[1][4][i] + C4 * (24.0 * R2y[i] * invDt3 * invDt);
+            r5C = p[1][5][i] + C5 * (120.0 * R2y[i] * invDt3 * invDt2);
+
+            r[1][0][i]=r0C; r[1][1][i]=r1C; r[1][2][i]=r2C; r[1][3][i]=r3C; r[1][4][i]=r4C; r[1][5][i]=r5C;
+
+            // Z
+            r0C = p[2][0][i] + C0 * R2z[i];
+            r1C = p[2][1][i] + C1 * (R2z[i] * invDt);
+            r2C = p[2][2][i] + C2 * (2.0 * R2z[i] * invDt2);
+            r3C = p[2][3][i] + C3 * (6.0 * R2z[i] * invDt3);
+            r4C = p[2][4][i] + C4 * (24.0 * R2z[i] * invDt3 * invDt);
+            r5C = p[2][5][i] + C5 * (120.0 * R2z[i] * invDt3 * invDt2);
+
+            r[2][0][i]=r0C; r[2][1][i]=r1C; r[2][2][i]=r2C; r[2][3][i]=r3C; r[2][4][i]=r4C; r[2][5][i]=r5C;
+        }
+
+        for (int i = 0; i < N; i++) {
+            particles.get(i).setPosition(r[0][0][i], r[1][0][i], r[2][0][i]);
+            particles.get(i).setVelocity(r[0][1][i], r[1][1][i], r[2][1][i]);
+        }
+    }
+
+
 
 //    public static void initPrevPositions(List<Particle> particles, double dt, List<double []> prev) {
 //
