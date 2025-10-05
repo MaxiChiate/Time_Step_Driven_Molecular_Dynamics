@@ -1,7 +1,6 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.Format;
 import java.util.Locale;
 
 public class DampedOscillator {
@@ -141,7 +140,7 @@ public class DampedOscillator {
 
             case BEEMAN -> "beeman"+dtString+".csv";
             case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> "gear_order_5"+dtString+".csv";
-            case ORIGINAL_VERLET -> "original_verlet"+dtString+".csv";
+            case VERLET -> "original_verlet"+dtString+".csv";
             case null -> "theoretical"+dtString+".csv";
         };
         try (OutputWriter out = OutputWriter.open(directory.resolve(fileName))) {
@@ -155,7 +154,7 @@ public class DampedOscillator {
                         out.writeStepDamped(this, t());
                         stepGearOrder5();
                     }
-                    case ORIGINAL_VERLET -> {
+                    case VERLET -> {
                         stepOriginalVerlet(out);
 //                        out.writeStepDampedVerlet(this, t());
                     }
@@ -194,7 +193,7 @@ public class DampedOscillator {
         Path dir = Path.of("outputs/dampedOscillator");
         oscBeeman.simulate(dir, Scheme.BEEMAN);
         oscGear.simulate(dir, Scheme.GEAR_PREDICTOR_CORRECTOR_ORDER_5);
-        oscVerlet.simulate(dir, Scheme.ORIGINAL_VERLET);
+        oscVerlet.simulate(dir, Scheme.VERLET);
         oscTheo.simulate(dir, null);
     }
 }

@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Timer;
 
 public class Simulator {
 
@@ -39,8 +38,6 @@ public class Simulator {
 
             // Para Beeman se necesita aceleración previa
             List<double[]> prevAcc = new ArrayList<>();
-            // Para verlet original las posiciones iniciales
-            List<double[]> prevPos = new ArrayList<>();
 
             switch (scheme) {
                 case BEEMAN :
@@ -48,10 +45,6 @@ public class Simulator {
                         double[] f = Integrator.computeForce(p, particles);
                         prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
                     };
-                    break;
-
-                case ORIGINAL_VERLET:
-                    Integrator.initPrevPositions(particles, t, prevPos);
                     break;
 
                 case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
@@ -65,7 +58,7 @@ public class Simulator {
                 }
 
                 switch (scheme) {
-                    case ORIGINAL_VERLET -> Integrator.updateParticlesVerlet(particles, deltaT, prevPos);
+                    case VERLET -> Integrator.updateParticlesVelocityVerlet(particles, deltaT);
                     case BEEMAN -> Integrator.updateParticlesBeeman(particles, deltaT, prevAcc);
                     case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> Integrator.updateParticlesGear5(particles, deltaT);
                 }

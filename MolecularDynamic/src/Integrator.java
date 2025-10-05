@@ -84,62 +84,73 @@ public class Integrator {
         //
     }
 
-    // Verlet original
-    public static void updateParticlesVerlet(List<Particle> particles, double dt,
-                                             List<double[]> prevPositions) {
+
+    // Velocity-Verlet
+    public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
 
         List<double[]> fNow = new ArrayList<>();
-
         for (Particle p : particles) {
             fNow.add(computeForce(p, particles));
         }
 
-        List<double[]> posNow = new ArrayList<>();
-
+        List<double[]> posNew = new ArrayList<>();
         for (int i = 0; i < particles.size(); i++) {
 
             Particle p = particles.get(i);
-            posNow.add(new double[]{p.getX(), p.getY(), p.getZ()});
-
             double[] f = fNow.get(i);
+            double ax = f[0] / p.getMass();
+            double ay = f[1] / p.getMass();
+            double az = f[2] / p.getMass();
 
-            double[] prevPosition = prevPositions.get(i);
+            double newX = p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt;
+            double newY = p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt;
+            double newZ = p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt;
 
-            double newX = 2*p.getX() - prevPosition[0] + (dt*dt / p.getMass())*f[0];
-            double newY = 2*p.getY() - prevPosition[1] + (dt*dt / p.getMass())*f[1];
-            double newZ = 2*p.getZ() - prevPosition[2] + (dt*dt / p.getMass())*f[2];
-
-            double newVx = (newX-prevPosition[0])/(2*dt);
-            double newVy = (newY-prevPosition[1])/(2*dt);
-            double newVz = (newZ-prevPosition[2])/(2*dt);
-
-            p.setPosition(newX, newY, newZ);
-            p.setVelocity(newVx, newVy, newVz);
+            posNew.add(new double[]{newX, newY, newZ});
         }
 
-        prevPositions.clear();
-        prevPositions.addAll(posNow);
+        for (int i = 0; i < particles.size(); i++) {
+            double[] newPos = posNew.get(i);
+            particles.get(i).setPosition(newPos[0], newPos[1], newPos[2]);
+        }
+
+        List<double[]> fNext = new ArrayList<>();
+        for (Particle p : particles) {
+            fNext.add(computeForce(p, particles));
+        }
+
+        for (int i = 0; i < particles.size(); i++) {
+            Particle p = particles.get(i);
+            double[] f0 = fNow.get(i);
+            double[] f1 = fNext.get(i);
+
+            double newVx = p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass();
+            double newVy = p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass();
+            double newVz = p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass();
+
+            p.setVelocity(newVx, newVy, newVz);
+        }
     }
 
     public static void updateParticlesGear5(List<Particle> particles, double dt) {
         // Gear predictor-corrector orden 5
     }
 
-    public static void initPrevPositions(List<Particle> particles, double dt, List<double []> prev) {
-
-        for (Particle p : particles) {
-            double[] f = computeForce(p, particles);
-            double ax = f[0] / p.getMass();
-            double ay = f[1] / p.getMass();
-            double az = f[2] / p.getMass();
-
-            double xPrev = p.getX() - p.getVx()*dt + 0.5*ax*dt*dt;
-            double yPrev = p.getY() - p.getVy()*dt + 0.5*ay*dt*dt;
-            double zPrev = p.getZ() - p.getVz()*dt + 0.5*az*dt*dt;
-
-            prev.add(new double[]{xPrev, yPrev, zPrev});
-        }
-    }
+//    public static void initPrevPositions(List<Particle> particles, double dt, List<double []> prev) {
+//
+//        for (Particle p : particles) {
+//            double[] f = computeForce(p, particles);
+//            double ax = f[0] / p.getMass();
+//            double ay = f[1] / p.getMass();
+//            double az = f[2] / p.getMass();
+//
+//            double xPrev = p.getX() - p.getVx()*dt + 0.5*ax*dt*dt;
+//            double yPrev = p.getY() - p.getVy()*dt + 0.5*ay*dt*dt;
+//            double zPrev = p.getZ() - p.getVz()*dt + 0.5*az*dt*dt;
+//
+//            prev.add(new double[]{xPrev, yPrev, zPrev});
+//        }
+//    }
 
 
     // Un paso de Velocity-Verlet para la partícula pi
@@ -171,4 +182,43 @@ public class Integrator {
 ////            updateParticleFree(p, dt);
 //        }
 //    }
+
+    // Verlet original
+//    public static void updateParticlesVerlet(List<Particle> particles, double dt,
+//                                             List<double[]> prevPositions) {
+//
+//        List<double[]> fNow = new ArrayList<>();
+//
+//        for (Particle p : particles) {
+//            fNow.add(computeForce(p, particles));
+//        }
+//
+//        List<double[]> posNow = new ArrayList<>();
+//
+//        for (int i = 0; i < particles.size(); i++) {
+//
+//            Particle p = particles.get(i);
+//            posNow.add(new double[]{p.getX(), p.getY(), p.getZ()});
+//
+//            double[] f = fNow.get(i);
+//
+//            double[] prevPosition = prevPositions.get(i);
+//
+//            double newX = 2*p.getX() - prevPosition[0] + (dt*dt / p.getMass())*f[0];
+//            double newY = 2*p.getY() - prevPosition[1] + (dt*dt / p.getMass())*f[1];
+//            double newZ = 2*p.getZ() - prevPosition[2] + (dt*dt / p.getMass())*f[2];
+//
+//            double newVx = (newX-prevPosition[0])/(2*dt);
+//            double newVy = (newY-prevPosition[1])/(2*dt);
+//            double newVz = (newZ-prevPosition[2])/(2*dt);
+//
+//            p.setPosition(newX, newY, newZ);
+//            p.setVelocity(newVx, newVy, newVz);
+//        }
+//
+//        prevPositions.clear();
+//        prevPositions.addAll(posNow);
+//    }
+
 }
+
