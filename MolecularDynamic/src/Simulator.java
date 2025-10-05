@@ -42,7 +42,7 @@ public class Simulator {
             switch (scheme) {
                 case BEEMAN :
                     for (Particle p : particles) {
-                        double[] f = Integrator.computeForce(p, particles);
+                        double[] f = GalaxyIntegrator.computeForce(p, particles);
                         prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
                     };
                     break;
@@ -58,9 +58,9 @@ public class Simulator {
                 }
 
                 switch (scheme) {
-                    case VERLET -> Integrator.updateParticlesVelocityVerlet(particles, deltaT);
-                    case BEEMAN -> Integrator.updateParticlesBeeman(particles, deltaT, prevAcc);
-                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> Integrator.updateParticlesGear5(particles, deltaT);
+                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerlet(particles, deltaT);
+                    case BEEMAN -> GalaxyIntegrator.updateParticlesBeeman(particles, deltaT, prevAcc);
+                    case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> GalaxyIntegrator.updateParticlesGear5(particles, deltaT);
                 }
 
                 t += deltaT;

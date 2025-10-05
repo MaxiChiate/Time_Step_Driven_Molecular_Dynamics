@@ -1,12 +1,12 @@
 import java.util.ArrayList;
 import java.util.List;
 
-public class Integrator {
+public class GalaxyIntegrator {
 
     static private final double G = 1.0;
     static private final double H = 0.05;
 
-    private Integrator() {
+    private GalaxyIntegrator() {
         throw new RuntimeException(this + ": Not instantiable");
     }
 
