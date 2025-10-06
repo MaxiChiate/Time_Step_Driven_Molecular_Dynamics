@@ -39,7 +39,7 @@ public class GalaxyIntegrator {
                 double dz = pi.getZ() - pj.getZ();
 
                 double dist2 = dx * dx + dy * dy + dz * dz + H * H;
-                double dist3 = Math.pow(dist2, 1.5);
+                double dist3 = dist2 * Math.sqrt(dist2);
                 double factor = -G * pi.getMass() * pj.getMass() / dist3;
 
                 double fx = factor * dx;
@@ -89,7 +89,7 @@ public class GalaxyIntegrator {
           double dz = pi.getZ() - pj.getZ();
 
           double dist2 = dx * dx + dy * dy + dz * dz + H * H;
-          double dist3 = Math.pow(dist2, 1.5);
+          double dist3 = dist2 * Math.sqrt(dist2);
 
           double factor = -G * pi.getMass() * pj.getMass() / dist3;
 
@@ -127,6 +127,7 @@ public class GalaxyIntegrator {
       return forces;
     }
 
+    @Deprecated
     static public double[] computeForce(Particle pi, List<Particle> particles) {
         double fx = 0, fy = 0, fz = 0;
 
@@ -206,6 +207,7 @@ public class GalaxyIntegrator {
 
 
     // Velocity-Verlet
+    @Deprecated
     public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
 
         // 1. Calcular fuerzas actuales
