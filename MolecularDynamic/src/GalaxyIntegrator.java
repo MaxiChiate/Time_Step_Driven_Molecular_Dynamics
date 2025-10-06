@@ -154,10 +154,7 @@ public class GalaxyIntegrator {
     public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
 
         // 1. Calcular fuerzas actuales
-        List<double[]> fNow = new ArrayList<>();
-        for (Particle p : particles) {
-            fNow.add(computeForce(p, particles));
-        }
+        List<double[]> fNow = computeForces(particles);
 
         // 2. Actualizar posiciones en el lugar
         for (int i = 0; i < particles.size(); i++) {
@@ -175,10 +172,7 @@ public class GalaxyIntegrator {
         }
 
         // 3. Calcular nuevas fuerzas con posiciones actualizadas
-        List<double[]> fNext = new ArrayList<>();
-        for (Particle p : particles) {
-            fNext.add(computeForce(p, particles));
-        }
+        List<double[]> fNext = computeForces(particles);
 
         // 4. Actualizar velocidades
         for (int i = 0; i < particles.size(); i++) {
