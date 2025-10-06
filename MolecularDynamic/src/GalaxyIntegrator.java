@@ -61,7 +61,10 @@ public class GalaxyIntegrator {
         }
         for (int j = i - 1; j >= 0; --j) {
           var forces2 = interParticleForces.get(j);
-          forces2.get(i - j - 1);
+          var force = forces2.get(i - j - 1);
+          totalForce[0] -= force[0];
+          totalForce[1] -= force[1];
+          totalForce[2] -= force[2];
         }
         forces.add(totalForce);
       }
