@@ -19,6 +19,56 @@ public class GalaxyIntegrator {
         throw new RuntimeException(this + ": Not instantiable");
     }
 
+  static public List<double[]> computeForces(List<Particle> particles) {
+      List<double[]> forces = new ArrayList<>();
+      List<List<double[]>> interParticleForces = new ArrayList<>();
+      for (int i = 0; i < particles.size() - 1; ++i) {
+        Particle pi = particles.get(i);
+        List<double[]> piForces = new ArrayList<>();
+
+        for (int j = i + 1; j < particles.size(); ++j) {
+          Particle pj = particles.get(j);
+
+          double dx = pi.getX() - pj.getX();
+          double dy = pi.getY() - pj.getY();
+          double dz = pi.getZ() - pj.getZ();
+
+          double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+          double dist3 = Math.pow(dist2, 1.5);
+
+          double factor = -G * pi.getMass() * pj.getMass() / dist3;
+
+          piForces.add(new double[] { factor * dx, factor * dy, factor * dz });
+        }
+        interParticleForces.add(piForces);
+      }
+      // [
+      // p0: [p1, p2, p3, p4, p5],
+      // p1: [p2, p3, p4, p5],
+      // p2: [p3, p4, p5],
+      // p3: [p4, p5],
+      // p4: [p5],
+      // ]
+      for (int i = 0; i < particles.size(); ++i) {
+        var totalForce = new double[] { 0, 0, 0 };
+        if (i < particles.size() - 1) {
+          var forces1 = interParticleForces.get(i);
+          for (var force : forces1) {
+            totalForce[0] += force[0];
+            totalForce[1] += force[1];
+            totalForce[2] += force[2];
+          }
+        }
+        for (int j = i - 1; j >= 0; --j) {
+          var forces2 = interParticleForces.get(j);
+          forces2.get(i - j - 1);
+        }
+        forces.add(totalForce);
+      }
+
+      return forces;
+    }
+
     static public double[] computeForce(Particle pi, List<Particle> particles) {
         double fx = 0, fy = 0, fz = 0;
 
@@ -42,55 +92,58 @@ public class GalaxyIntegrator {
         return new double[]{fx, fy, fz};
     }
 
-
     static public void updateParticlesBeeman(List<Particle> particles, double dt,
-                                             // Paso de integración con Beeman
-                                             List<double[]> prevAccelerations) {
-        // Aceleraciones actuales
-        List<double[]> accNow = new ArrayList<>();
-        for (Particle p : particles) {
-            double[] f = computeForce(p, particles);
-            accNow.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-        }
+        // Paso de integración con Beeman
+        List<double[]> prevAccelerations) {
+      // Aceleraciones actuales
+      List<double[]> accNow = new ArrayList<>();
+      var forces = computeForces(particles);
+      for (int i = 0; i < particles.size(); ++i) {
+        var f = forces.get(i);
+        var p = particles.get(i);
+        accNow.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
+      }
 
-        // Actualizar posiciones
-        for (int i = 0; i < particles.size(); i++) {
-            Particle p = particles.get(i);
-            double[] aNow = accNow.get(i);
-            double[] aPrev = prevAccelerations.get(i);
+      // Actualizar posiciones
+      for (int i = 0; i < particles.size(); i++) {
+        Particle p = particles.get(i);
+        double[] aNow = accNow.get(i);
+        double[] aPrev = prevAccelerations.get(i);
 
-            double newX = p.getX() + p.getVx()*dt + (2.0/3.0)*aNow[0]*dt*dt - (1.0/6.0)*aPrev[0]*dt*dt;
-            double newY = p.getY() + p.getVy()*dt + (2.0/3.0)*aNow[1]*dt*dt - (1.0/6.0)*aPrev[1]*dt*dt;
-            double newZ = p.getZ() + p.getVz()*dt + (2.0/3.0)*aNow[2]*dt*dt - (1.0/6.0)*aPrev[2]*dt*dt;
+        double newX = p.getX() + p.getVx() * dt + (2.0 / 3.0) * aNow[0] * dt * dt - (1.0 / 6.0) * aPrev[0] * dt * dt;
+        double newY = p.getY() + p.getVy() * dt + (2.0 / 3.0) * aNow[1] * dt * dt - (1.0 / 6.0) * aPrev[1] * dt * dt;
+        double newZ = p.getZ() + p.getVz() * dt + (2.0 / 3.0) * aNow[2] * dt * dt - (1.0 / 6.0) * aPrev[2] * dt * dt;
 
-            p.setPosition(newX, newY, newZ);
-        }
+        p.setPosition(newX, newY, newZ);
+      }
 
-        // Aceleraciones futuras (con posiciones nuevas)
-        List<double[]> accNext = new ArrayList<>();
-        for (Particle p : particles) {
-            double[] f = computeForce(p, particles);
-            accNext.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-        }
+      // Aceleraciones futuras (con posiciones nuevas)
+      List<double[]> accNext = new ArrayList<>();
+      forces = computeForces(particles);
+      for (int i = 0; i < particles.size(); ++i) {
+        var f = forces.get(i);
+        var p = particles.get(i);
+        accNext.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
+      }
 
-        // Actualizar velocidades
-        for (int i = 0; i < particles.size(); i++) {
-            Particle p = particles.get(i);
-            double[] aPrev = prevAccelerations.get(i);
-            double[] aNow = accNow.get(i);
-            double[] aNext = accNext.get(i);
+      // Actualizar velocidades
+      for (int i = 0; i < particles.size(); i++) {
+        Particle p = particles.get(i);
+        double[] aPrev = prevAccelerations.get(i);
+        double[] aNow = accNow.get(i);
+        double[] aNext = accNext.get(i);
 
-            double newVx = p.getVx() + (1.0/3.0)*aNext[0]*dt + (5.0/6.0)*aNow[0]*dt - (1.0/6.0)*aPrev[0]*dt;
-            double newVy = p.getVy() + (1.0/3.0)*aNext[1]*dt + (5.0/6.0)*aNow[1]*dt - (1.0/6.0)*aPrev[1]*dt;
-            double newVz = p.getVz() + (1.0/3.0)*aNext[2]*dt + (5.0/6.0)*aNow[2]*dt - (1.0/6.0)*aPrev[2]*dt;
+        double newVx = p.getVx() + (1.0 / 3.0) * aNext[0] * dt + (5.0 / 6.0) * aNow[0] * dt - (1.0 / 6.0) * aPrev[0] * dt;
+        double newVy = p.getVy() + (1.0 / 3.0) * aNext[1] * dt + (5.0 / 6.0) * aNow[1] * dt - (1.0 / 6.0) * aPrev[1] * dt;
+        double newVz = p.getVz() + (1.0 / 3.0) * aNext[2] * dt + (5.0 / 6.0) * aNow[2] * dt - (1.0 / 6.0) * aPrev[2] * dt;
 
-            p.setVelocity(newVx, newVy, newVz);
-        }
+        p.setVelocity(newVx, newVy, newVz);
+      }
 
-        // Importante: devolver accNow como "prev" para el próximo paso
-        prevAccelerations.clear();
-        prevAccelerations.addAll(accNow);
-        //
+      // Importante: devolver accNow como "prev" para el próximo paso
+      prevAccelerations.clear();
+      prevAccelerations.addAll(accNow);
+      //
     }
 
 

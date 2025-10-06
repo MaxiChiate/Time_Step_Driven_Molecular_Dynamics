@@ -43,10 +43,12 @@ public class Simulator {
 
             switch (scheme) {
                 case BEEMAN :
-                    for (Particle p : particles) {
-                        double[] f = GalaxyIntegrator.computeForce(p, particles);
-                        prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-                    };
+                    var forces = GalaxyIntegrator.computeForces(particles);
+                    for (int i = 0; i < particles.size(); ++i) {
+                      var f = forces.get(i);
+                      var p = particles.get(i);
+                      prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+                    }
                     break;
 
                 case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
