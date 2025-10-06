@@ -153,49 +153,47 @@ public class GalaxyIntegrator {
     // Velocity-Verlet
     public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
 
+        // 1. Calcular fuerzas actuales
         List<double[]> fNow = new ArrayList<>();
         for (Particle p : particles) {
             fNow.add(computeForce(p, particles));
         }
 
-        List<double[]> posNew = new ArrayList<>();
+        // 2. Actualizar posiciones en el lugar
         for (int i = 0; i < particles.size(); i++) {
-
             Particle p = particles.get(i);
             double[] f = fNow.get(i);
             double ax = f[0] / p.getMass();
             double ay = f[1] / p.getMass();
             double az = f[2] / p.getMass();
 
-            double newX = p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt;
-            double newY = p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt;
-            double newZ = p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt;
-
-            posNew.add(new double[]{newX, newY, newZ});
+            p.setPosition(
+                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
+                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
+                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
+            );
         }
 
-        for (int i = 0; i < particles.size(); i++) {
-            double[] newPos = posNew.get(i);
-            particles.get(i).setPosition(newPos[0], newPos[1], newPos[2]);
-        }
-
+        // 3. Calcular nuevas fuerzas con posiciones actualizadas
         List<double[]> fNext = new ArrayList<>();
         for (Particle p : particles) {
             fNext.add(computeForce(p, particles));
         }
 
+        // 4. Actualizar velocidades
         for (int i = 0; i < particles.size(); i++) {
             Particle p = particles.get(i);
             double[] f0 = fNow.get(i);
             double[] f1 = fNext.get(i);
 
-            double newVx = p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass();
-            double newVy = p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass();
-            double newVz = p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass();
-
-            p.setVelocity(newVx, newVy, newVz);
+            p.setVelocity(
+                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
+                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
+                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
+            );
         }
     }
+
 
     public static void initGear(List<Particle> particles, double dt, double[][][] r, double[][][] p) {
         int N = particles.size();
