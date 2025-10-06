@@ -21,7 +21,56 @@ public class GalaxyIntegrator {
         throw new RuntimeException(this + ": Not instantiable");
     }
 
-    public static List<double[]> computeForcesParallel(List<Particle> particles) {
+    public static List<double[]> computeForcesParallelChunked(List<Particle> particles) {
+        int n = particles.size();
+        double[][] forces = new double[n][3];
+        int nThreads = Runtime.getRuntime().availableProcessors();
+        int chunk = (n + nThreads - 1) / nThreads;
+
+        Thread[] threads = new Thread[nThreads];
+        for (int t = 0; t < nThreads; t++) {
+            final int start = t * chunk;
+            final int end = Math.min(start + chunk, n);
+            threads[t] = new Thread(() -> {
+                for (int i = start; i < end; i++) {
+                    Particle pi = particles.get(i);
+                    for (int j = i + 1; j < n; j++) {
+                        Particle pj = particles.get(j);
+
+                        double dx = pi.getX() - pj.getX();
+                        double dy = pi.getY() - pj.getY();
+                        double dz = pi.getZ() - pj.getZ();
+
+                        double dist2 = dx*dx + dy*dy + dz*dz + H*H;
+                        double dist = Math.sqrt(dist2);
+                        double dist3 = dist2 * dist;
+                        double factor = -G * pi.getMass() * pj.getMass() / dist3;
+
+                        double fx = factor * dx;
+                        double fy = factor * dy;
+                        double fz = factor * dz;
+
+                        synchronized (forces[i]) {
+                            forces[i][0] += fx;
+                            forces[i][1] += fy;
+                            forces[i][2] += fz;
+                        }
+                        synchronized (forces[j]) {
+                            forces[j][0] -= fx;
+                            forces[j][1] -= fy;
+                            forces[j][2] -= fz;
+                        }
+                    }
+                }
+            });
+            threads[t].start();
+        }
+        for (Thread t : threads) try { t.join(); } catch (InterruptedException ignored) {}
+        return Arrays.stream(forces).toList();
+    }
+
+
+    public static List<double[]> computeForcesParallelIntStream(List<Particle> particles) {
         int n = particles.size();
         double[][] forces = new double[n][3];
 
@@ -248,7 +297,7 @@ public class GalaxyIntegrator {
     public static void updateParticlesVelocityVerletParallel(List<Particle> particles, double dt) {
 
         // 1. Fuerzas actuales
-        List<double[]> fNow = computeForcesParallel(particles);
+        List<double[]> fNow = computeForcesParallelIntStream(particles);
 
         // 2. Actualizar posiciones
         IntStream.range(0, particles.size()).parallel().forEach(i -> {
@@ -266,7 +315,7 @@ public class GalaxyIntegrator {
         });
 
         // 3. Fuerzas nuevas
-        List<double[]> fNext = computeForcesParallel(particles);
+        List<double[]> fNext = computeForcesParallelIntStream(particles);
 
         // 4. Actualizar velocidades
         IntStream.range(0, particles.size()).parallel().forEach(i -> {
