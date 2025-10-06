@@ -1,6 +1,8 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.IntStream;
 
 public class GalaxyIntegrator {
 
@@ -19,7 +21,60 @@ public class GalaxyIntegrator {
         throw new RuntimeException(this + ": Not instantiable");
     }
 
-  static public List<double[]> computeForces(List<Particle> particles) {
+    public static List<double[]> computeForcesParallel(List<Particle> particles) {
+        int n = particles.size();
+        double[][] forces = new double[n][3];
+
+        // Cada thread tiene su acumulador local
+        ThreadLocal<double[][]> localForces = ThreadLocal.withInitial(() -> new double[n][3]);
+
+        IntStream.range(0, n - 1).parallel().forEach(i -> {
+            double[][] fLocal = localForces.get();
+            Particle pi = particles.get(i);
+            for (int j = i + 1; j < n; j++) {
+                Particle pj = particles.get(j);
+
+                double dx = pi.getX() - pj.getX();
+                double dy = pi.getY() - pj.getY();
+                double dz = pi.getZ() - pj.getZ();
+
+                double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+                double dist3 = Math.pow(dist2, 1.5);
+                double factor = -G * pi.getMass() * pj.getMass() / dist3;
+
+                double fx = factor * dx;
+                double fy = factor * dy;
+                double fz = factor * dz;
+
+                fLocal[i][0] += fx;
+                fLocal[i][1] += fy;
+                fLocal[i][2] += fz;
+                fLocal[j][0] -= fx;
+                fLocal[j][1] -= fy;
+                fLocal[j][2] -= fz;
+            }
+        });
+
+        // Reducción: sumar los acumuladores de todos los threads
+        List<double[][]> allLocals = ForkJoinPool.commonPool()
+                .submit(() -> IntStream.range(0, Runtime.getRuntime().availableProcessors())
+                        .mapToObj(i -> localForces.get())
+                        .toList())
+                .join();
+
+        for (double[][] lf : allLocals) {
+            for (int i = 0; i < n; i++) {
+                forces[i][0] += lf[i][0];
+                forces[i][1] += lf[i][1];
+                forces[i][2] += lf[i][2];
+            }
+        }
+
+        return Arrays.asList(forces);
+    }
+
+
+    static public List<double[]> computeForces(List<Particle> particles) {
       List<double[]> forces = new ArrayList<>();
       List<List<double[]>> interParticleForces = new ArrayList<>();
       for (int i = 0; i < particles.size() - 1; ++i) {
@@ -187,6 +242,43 @@ public class GalaxyIntegrator {
             );
         }
     }
+
+    public static void updateParticlesVelocityVerletParallel(List<Particle> particles, double dt) {
+
+        // 1. Fuerzas actuales
+        List<double[]> fNow = computeForcesParallel(particles);
+
+        // 2. Actualizar posiciones
+        IntStream.range(0, particles.size()).parallel().forEach(i -> {
+            Particle p = particles.get(i);
+            double[] f = fNow.get(i);
+            double ax = f[0] / p.getMass();
+            double ay = f[1] / p.getMass();
+            double az = f[2] / p.getMass();
+
+            p.setPosition(
+                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
+                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
+                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
+            );
+        });
+
+        // 3. Fuerzas nuevas
+        List<double[]> fNext = computeForcesParallel(particles);
+
+        // 4. Actualizar velocidades
+        IntStream.range(0, particles.size()).parallel().forEach(i -> {
+            Particle p = particles.get(i);
+            double[] f0 = fNow.get(i);
+            double[] f1 = fNext.get(i);
+            p.setVelocity(
+                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
+                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
+                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
+            );
+        });
+    }
+
 
 
     public static void initGear(List<Particle> particles, double dt, double[][][] r, double[][][] p) {
