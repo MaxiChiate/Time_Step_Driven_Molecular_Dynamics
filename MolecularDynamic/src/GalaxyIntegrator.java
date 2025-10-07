@@ -81,7 +81,7 @@ public class GalaxyIntegrator {
         }
 
         final int cores = Math.max(1, Runtime.getRuntime().availableProcessors());
-        final int tiles = cores * 4;                     // probar 2–8× cores
+        final int tiles = cores * 4;
         final int tileSize = Math.max(1, (N - 1 + tiles - 1) / tiles);
         final int N3 = 3 * N;
 
