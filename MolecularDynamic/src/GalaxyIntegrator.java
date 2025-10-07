@@ -512,6 +512,65 @@ public class GalaxyIntegrator {
         }
     }
 
+    public static double computeTotalEnergy(List<Particle> particles) {
+        double kinetic = 0.0;
+        double potential = 0.0;
+        final int n = particles.size();
+
+        // --- Energía cinética ---
+        for (Particle p : particles) {
+            double vx = p.getVx(), vy = p.getVy(), vz = p.getVz();
+            kinetic += 0.5 * p.getMass() * (vx * vx + vy * vy + vz * vz);
+        }
+
+        // --- Energía potencial (por pares) ---
+        for (int i = 0; i < n - 1; i++) {
+            Particle pi = particles.get(i);
+            for (int j = i + 1; j < n; j++) {
+                Particle pj = particles.get(j);
+
+                double dx = pi.getX() - pj.getX();
+                double dy = pi.getY() - pj.getY();
+                double dz = pi.getZ() - pj.getZ();
+                double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+                double dist = Math.sqrt(dist2);
+
+                potential += -G * pi.getMass() * pj.getMass() / dist;
+            }
+        }
+
+        return kinetic + potential;
+    }
+
+    public static double computeHalfMassRadius(List<Particle> particles) {
+        // Centro de masa
+        double totalMass = 0, cx = 0, cy = 0, cz = 0;
+        for (Particle p : particles) {
+            double m = p.getMass();
+            totalMass += m;
+            cx += p.getX() * m;
+            cy += p.getY() * m;
+            cz += p.getZ() * m;
+        }
+        cx /= totalMass;
+        cy /= totalMass;
+        cz /= totalMass;
+
+        // Distancias al centro de masa
+        double[] distances = new double[particles.size()];
+        for (int i = 0; i < particles.size(); i++) {
+            Particle p = particles.get(i);
+            double dx = p.getX() - cx;
+            double dy = p.getY() - cy;
+            double dz = p.getZ() - cz;
+            distances[i] = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+        Arrays.sort(distances);
+
+        // Radio que contiene la mitad de la masa total
+        int halfIndex = (int) Math.ceil(particles.size() / 2.0) - 1;
+        return distances[halfIndex];
+    }
 
 
 //    public static void initPrevPositions(List<Particle> particles, double dt, List<double []> prev) {

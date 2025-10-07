@@ -63,6 +63,17 @@ public void writeStep(List<Particle> particles, double time) throws IOException 
     bw.write(sb.toString());
 }
 
+public void writeAnalysis(double time, double energy, double rhm, Double tStar) throws IOException {
+    sb.setLength(0);
+
+    if (tStar == null)
+        fmt.format(Locale.US, "%.6f,%.17g,%.17g,%s%n", time, energy, rhm, "NaN");
+    else
+        fmt.format(Locale.US, "%.6f,%.17g,%.17g,%.6f%n", time, energy, rhm, tStar);
+    bw.write(sb.toString());
+}
+
+
 
 //----------FOR GALAXY INPUT GENERATION----------------------------------------------------
     public static void writeOutputForSingle(int iter, Particle[] particles, int N) throws IOException {

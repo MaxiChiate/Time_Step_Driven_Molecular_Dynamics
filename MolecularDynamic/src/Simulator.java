@@ -16,7 +16,7 @@ public class Simulator {
     private final Scheme scheme;
 
     // Cantidad deseada de outputs totales (ajustable)
-    private static final int targetOutputs = 150;
+    private static final int targetOutputs = 100;
 
     private final double writeInterval;
     private double nextWriteTime;
@@ -34,7 +34,11 @@ public class Simulator {
     }
 
     public void executeSimulation(Path outputPath) throws IOException {
-        try (OutputWriter out = OutputWriter.open(outputPath)) {
+
+        Path analysisPath = Path.of(outputPath.toString().replace(".csv", "_analysis.csv"));
+
+        try (OutputWriter out = OutputWriter.open(outputPath);
+             OutputWriter analysisOut = OutputWriter.open(analysisPath)) {
 
             // Para Beeman se necesita aceleración previa
             List<double[]> prevAcc = new ArrayList<>();
@@ -55,15 +59,32 @@ public class Simulator {
                     GalaxyIntegrator.initGear(particles, deltaT, r, predictR);
                     break;
             }
+
+            Double tStar = null;
+            double E = GalaxyIntegrator.computeTotalEnergy(particles);
+            double rhm = GalaxyIntegrator.computeHalfMassRadius(particles);
+            // t0:
             out.writeStep(particles, t);
+            analysisOut.writeAnalysis(t, E, rhm, tStar);
+
             while (t <= maxT) {
                 if (t >= nextWriteTime) {
                     out.writeStep(particles, t);
+
+                    E = GalaxyIntegrator.computeTotalEnergy(particles);
+                    rhm = GalaxyIntegrator.computeHalfMassRadius(particles);
+
+                    if (tStar == null && rhm > 1.0) {
+                        tStar = t;
+                    }
+
+                    analysisOut.writeAnalysis(t, E, rhm, tStar);
                     nextWriteTime += writeInterval;
                 }
 
                 switch (scheme) {
-                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerlet(particles, deltaT);
+//                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerlet(particles, deltaT);
+                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerletParallel(particles, deltaT);
                     case BEEMAN -> GalaxyIntegrator.updateParticlesBeeman(particles, deltaT, prevAcc);
                     case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> GalaxyIntegrator.updateParticlesGear5(particles, deltaT, r, predictR);
                 }
@@ -101,16 +122,17 @@ public class Simulator {
         Instant start = Instant.now();
 
 //        while(N<=2000) {
-//        for(double dt = deltaT; dt <= 0.09; dt *= 10) {
+//        for(double dt = deltaT; dt <= 0.009; dt *= 10) {
             for (int i = 0; i < iterations; i++) {
                 InputParser parser = new InputParser(inputDir + "/" + mode + "/N" + N + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
                 ArrayList<Particle> particles = parser.parseInputs();
 
                 Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N_" + N));
                 Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", deltaT), maxT, String.format("%04d", i)));
+//                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", dt), maxT, String.format("%04d", i)));
                 System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);
-//                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
                 Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
+//                Simulator s = new Simulator(particles, scheme, dt, maxT, fileName);
                 System.out.printf("\nIteration " + (i + 1) + " completed.");
             }
 //        }
