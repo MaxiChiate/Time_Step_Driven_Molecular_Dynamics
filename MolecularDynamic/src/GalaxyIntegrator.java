@@ -69,6 +69,64 @@ public class GalaxyIntegrator {
         return Arrays.stream(forces).toList();
     }
 
+    public static List<double[]> computeForcesParallelBetter(List<Particle> particles) {
+        final int N = particles.size();
+        final double h2 = H*H, gNeg = -G;
+
+
+        final double[] x = new double[N], y = new double[N], z = new double[N], m = new double[N];
+        for (int i = 0; i < N; i++) {
+            Particle p = particles.get(i);
+            x[i] = p.getX(); y[i] = p.getY(); z[i] = p.getZ(); m[i] = p.getMass();
+        }
+
+        final int cores = Math.max(1, Runtime.getRuntime().availableProcessors());
+        final int tiles = cores * 4;                     // probar 2–8× cores
+        final int tileSize = Math.max(1, (N - 1 + tiles - 1) / tiles);
+        final int N3 = 3 * N;
+
+        // Cada hilo obtiene un double[N3] propio; acumula ahí sus tiles; al final se combinan.
+        double[] acc = IntStream.range(0, tiles).parallel().collect(
+                // supplier: contenedor por hilo (un solo array grande por hilo)
+                () -> new double[N3],
+                // accumulator: computa un tile y lo suma directo en el array de ESTE hilo (sin crear nada)
+                (a, t) -> {
+                    final int iStart = t * tileSize;
+                    final int iEnd   = Math.min(N - 1, iStart + tileSize);
+                    if (iStart >= iEnd) return;
+                    final int offFx = 0;
+                    final int offFz = 2*N;
+
+                    for (int i = iStart; i < iEnd; i++) {
+                        final double xi = x[i], yi = y[i], zi = z[i], mi = m[i];
+                        for (int j = i + 1; j < N; j++) {
+                            final double dx = xi - x[j];
+                            final double dy = yi - y[j];
+                            final double dz = zi - z[j];
+
+                            final double r2   = dx*dx + dy*dy + dz*dz + h2;
+                            final double invR = 1.0 / Math.sqrt(r2);
+                            final double invR3= invR * invR * invR;
+
+                            final double s  = gNeg * mi * m[j] * invR3;
+                            final double fx = s * dx, fy = s * dy, fz = s * dz;
+
+                            a[offFx + i] += fx;  a[N + i] += fy;  a[offFz + i] += fz;
+                            a[offFx + j] -= fx;  a[N + j] -= fy;  a[offFz + j] -= fz;
+                        }
+                    }
+                },
+                // combiner: suma arrays (pocos, uno por hilo)
+                (a, b) -> { for (int k = 0; k < N3; k++) a[k] += b[k]; }
+        );
+
+        // Empaquetar salida
+        final int offFx = 0;
+        final int offFz = 2*N;
+        List<double[]> forces = new ArrayList<>(N);
+        for (int i = 0; i < N; i++) forces.add(new double[]{acc[offFx+i], acc[N +i], acc[offFz+i]});
+        return forces;
+    }
 
     public static List<double[]> computeForcesParallelIntStream(List<Particle> particles) {
         int n = particles.size();
@@ -297,7 +355,7 @@ public class GalaxyIntegrator {
     public static void updateParticlesVelocityVerletParallel(List<Particle> particles, double dt) {
 
         // 1. Fuerzas actuales
-        List<double[]> fNow = computeForcesParallelIntStream(particles);
+        List<double[]> fNow = computeForcesParallelBetter(particles);
 
         // 2. Actualizar posiciones
         IntStream.range(0, particles.size()).parallel().forEach(i -> {
@@ -315,7 +373,7 @@ public class GalaxyIntegrator {
         });
 
         // 3. Fuerzas nuevas
-        List<double[]> fNext = computeForcesParallelIntStream(particles);
+        List<double[]> fNext = computeForcesParallelBetter(particles);
 
         // 4. Actualizar velocidades
         IntStream.range(0, particles.size()).parallel().forEach(i -> {
@@ -341,9 +399,10 @@ public class GalaxyIntegrator {
             r[0][0][i] = part.getX();  r[1][0][i] = part.getY();  r[2][0][i] = part.getZ();
             r[0][1][i] = part.getVx(); r[1][1][i] = part.getVy(); r[2][1][i] = part.getVz();
         }
+        List<double[]> forces = computeForcesParallelBetter(particles);
         for (int i = 0; i < N; i++) {
             Particle pi = particles.get(i);
-            double[] f = computeForce(pi, particles);
+            double[] f = forces.get(i);
             r[0][2][i] = f[0] / pi.getMass();
             r[1][2][i] = f[1] / pi.getMass();
             r[2][2][i] = f[2] / pi.getMass();
@@ -392,9 +451,12 @@ public class GalaxyIntegrator {
         }
 
         double[] R2x = new double[N], R2y = new double[N], R2z = new double[N];
+
+        List<double[]> particlesForces =computeForcesParallelBetter(particles);
+
         for (int i = 0; i < N; i++) {
             Particle pi = particles.get(i);
-            double[] fP = computeForce(pi, particles);
+            double[] fP = particlesForces.get(i);
             double axP = fP[0] / pi.getMass(), ayP = fP[1] / pi.getMass(), azP = fP[2]/ pi.getMass();;
 
             double dAx = axP - p[0][2][i];
