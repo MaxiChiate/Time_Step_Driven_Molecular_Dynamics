@@ -124,10 +124,10 @@ public class Simulator {
 //        while(N<=2000) {
 //        for(double dt = deltaT; dt <= 0.009; dt *= 10) {
             for (int i = 0; i < iterations; i++) {
-                InputParser parser = new InputParser(inputDir + "/" + mode + "/N" + N + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
+                InputParser parser = new InputParser(inputDir + "/" + mode + "/N" + String.format("%04d", N) + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
                 ArrayList<Particle> particles = parser.parseInputs();
 
-                Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N_" + N));
+                Path directory = Files.createDirectories(Path.of(outputDir, mode, Scheme.printScheme(scheme), "N" + String.format("%04d", N)));
                 Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", deltaT), maxT, String.format("%04d", i)));
 //                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", dt), maxT, String.format("%04d", i)));
                 System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);

@@ -92,7 +92,7 @@ public void writeAnalysis(double time, double energy, double rhm, Double tStar) 
     }
 
     private static File prepareOutputFile(String modeFolder, int iter, int N) throws IOException {
-        String dirPath = INPUTS_PATH + "/" + modeFolder + "/N" + N;
+        String dirPath = INPUTS_PATH + "/" + modeFolder + "/N" + String.format("%04d", N);
         Files.createDirectories(Path.of(dirPath));
         String fileName = String.format("input_N%d_%s.csv", N, String.format("%04d", iter));
         File file = new File(dirPath + "/" + fileName);
