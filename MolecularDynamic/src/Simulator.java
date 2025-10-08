@@ -15,14 +15,11 @@ public class Simulator {
     private final ArrayList<Particle> particles;
     private final Scheme scheme;
 
-    // Cantidad deseada de outputs totales (ajustable)
-    private static final int targetOutputs = 100;
-
     private final double writeInterval;
     private double nextWriteTime;
 
 
-    public Simulator(ArrayList<Particle> particles, Scheme scheme, double deltaT, double maxT, Path file) throws IOException {
+    public Simulator(ArrayList<Particle> particles, Scheme scheme, double deltaT, double maxT, Path file, int targetOutputs) throws IOException {
         this.particles = particles;
         this.maxT = maxT;
         this.deltaT = deltaT;
@@ -103,7 +100,7 @@ public class Simulator {
     }
 
     public static void main(String[] args) throws IOException {
-        if (args.length != 8) {
+        if (args.length != 9) {
             throw new IllegalArgumentException("Wrong number of arguments");
         }
         int N = Integer.parseInt(args[0]);
@@ -114,9 +111,11 @@ public class Simulator {
         String mode = args[5];
         double deltaT = Double.parseDouble(args[6]);
         int maxT = Integer.parseInt(args[7]);
-        if (N <= 0 || iterations <= 0 || deltaT <=0 || maxT <= 0 || inputDir.isEmpty() || outputDir.isEmpty() || mode.isEmpty()) {
-            System.out.print("Error: Parameters should be: N, iterations, inputDir, outputDir, Scheme(gp5/bm/vt), mode(single/cluster), deltaT, maxT\n");
-            System.out.print("Example: 200 1 inputs outputs vt cluster 0.1 10");
+        // Cantidad deseada de outputs totales
+        int targetOutputs = Integer.parseInt(args[8]);
+        if (N <= 0 || iterations <= 0 || deltaT <=0 || maxT <= 0 || inputDir.isEmpty() || outputDir.isEmpty() || mode.isEmpty() || targetOutputs <= 0) {
+            System.out.print("Error: Parameters should be: N, iterations, inputDir, outputDir, Scheme(gp5/bm/vt), mode(single/cluster), deltaT, maxT, targetOutputs\n");
+            System.out.print("Example: 200 1 inputs outputs vt cluster 0.1 10 500");
             return;
         }
         Instant start = Instant.now();
@@ -131,7 +130,7 @@ public class Simulator {
                 Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", deltaT), maxT, String.format("%04d", i)));
 //                Path fileName = Path.of(directory + String.format("/output_N%d_%s_%s_t%d_%s.csv", N, mode, String.format(Locale.US, "dt%.5f", dt), maxT, String.format("%04d", i)));
                 System.out.printf("\nStarting iteration %d/%d...\n", i + 1, iterations);
-                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName);
+                Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName, targetOutputs);
 //                Simulator s = new Simulator(particles, scheme, dt, maxT, fileName);
                 System.out.printf("\nIteration " + (i + 1) + " completed.");
             }
