@@ -13,13 +13,6 @@ public class DampedOscillator {
     private final double dt;
     private final static double maxT = 5;
 
-    private static final double C0 = 3.0/16.0;
-    private static final double C1 = 251.0/360.0;
-    private static final double C2 = 1.0;
-    private static final double C3 = 11.0/18.0;
-    private static final double C4 = 1.0/6.0;
-    private static final double C5 = 1.0/60.0;
-
     private double r0, r1, r2, r3, r4, r5;
     private double r0P, r1P, r2P, r3P, r4P, r5P;
 
@@ -108,6 +101,14 @@ public class DampedOscillator {
         r5 = -(k/m) * r3 - (gamma/m) * r4;
     }
     private void stepGearOrder5() {
+
+        final double C0 = GearCoefficients.C0;
+        final double C1 = GearCoefficients.C1;
+        final double C2 = GearCoefficients.C2;
+        final double C3 = GearCoefficients.C3;
+        final double C4 = GearCoefficients.C4;
+        final double C5 = GearCoefficients.C5;
+
         predictOrder5();
         double aP = acceleration(r0P, r1P);
         double a = aP - r2P;

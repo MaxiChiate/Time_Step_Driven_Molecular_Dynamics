@@ -9,14 +9,6 @@ public class GalaxyIntegrator {
     static private final double G = 1.0;
     static private final double H = 0.05;
 
-    private static final double C0 = 3.0 / 20.0;
-    private static final double C1 = 251.0 / 360.0;
-    private static final double C2 = 1.0;
-    private static final double C3 = 11.0 / 18.0;
-    private static final double C4 = 1.0 / 6.0;
-    private static final double C5 = 1.0 / 60.0;
-
-
     private GalaxyIntegrator() {
         throw new RuntimeException(this + ": Not instantiable");
     }
@@ -417,6 +409,14 @@ public class GalaxyIntegrator {
     public static void updateParticlesGear5(List<Particle> particles, double dt, double[][][] r, double[][][] p) {
         final int N = particles.size();
         final double dt1 = dt, dt2 = dt1*dt, dt3 = dt2*dt, dt4 = dt3*dt, dt5 = dt4*dt;
+
+        final double C0 = GearCoefficients.C0;
+        final double C1 = GearCoefficients.C1;
+        final double C2 = GearCoefficients.C2;
+        final double C3 = GearCoefficients.C3;
+        final double C4 = GearCoefficients.C4;
+        final double C5 = GearCoefficients.C5;
+
         for (int i = 0; i < N; i++) {
             // X
             double r0 = r[0][0][i], r1 = r[0][1][i], r2 = r[0][2][i], r3 = r[0][3][i], r4 = r[0][4][i], r5 = r[0][5][i];
