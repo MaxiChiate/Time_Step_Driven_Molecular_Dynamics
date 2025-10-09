@@ -410,7 +410,7 @@ public class GalaxyIntegrator {
         final int N = particles.size();
         final double dt1 = dt, dt2 = dt1*dt, dt3 = dt2*dt, dt4 = dt3*dt, dt5 = dt4*dt;
 
-        final double C0 = GearCoefficients.C0;
+        final double C0 = GearCoefficients.C0_GALAXY;
         final double C1 = GearCoefficients.C1;
         final double C2 = GearCoefficients.C2;
         final double C3 = GearCoefficients.C3;

@@ -102,7 +102,7 @@ public class DampedOscillator {
     }
     private void stepGearOrder5() {
 
-        final double C0 = GearCoefficients.C0;
+        final double C0 = GearCoefficients.C0_OSCILLATOR;
         final double C1 = GearCoefficients.C1;
         final double C2 = GearCoefficients.C2;
         final double C3 = GearCoefficients.C3;
