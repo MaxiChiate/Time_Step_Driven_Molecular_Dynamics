@@ -13,53 +13,53 @@ public class GalaxyIntegrator {
         throw new RuntimeException(this + ": Not instantiable");
     }
 
-    public static List<double[]> computeForcesParallelChunked(List<Particle> particles) {
-        int n = particles.size();
-        double[][] forces = new double[n][3];
-        int nThreads = Runtime.getRuntime().availableProcessors();
-        int chunk = (n + nThreads - 1) / nThreads;
-
-        Thread[] threads = new Thread[nThreads];
-        for (int t = 0; t < nThreads; t++) {
-            final int start = t * chunk;
-            final int end = Math.min(start + chunk, n);
-            threads[t] = new Thread(() -> {
-                for (int i = start; i < end; i++) {
-                    Particle pi = particles.get(i);
-                    for (int j = i + 1; j < n; j++) {
-                        Particle pj = particles.get(j);
-
-                        double dx = pi.getX() - pj.getX();
-                        double dy = pi.getY() - pj.getY();
-                        double dz = pi.getZ() - pj.getZ();
-
-                        double dist2 = dx*dx + dy*dy + dz*dz + H*H;
-                        double dist = Math.sqrt(dist2);
-                        double dist3 = dist2 * dist;
-                        double factor = -G * pi.getMass() * pj.getMass() / dist3;
-
-                        double fx = factor * dx;
-                        double fy = factor * dy;
-                        double fz = factor * dz;
-
-                        synchronized (forces[i]) {
-                            forces[i][0] += fx;
-                            forces[i][1] += fy;
-                            forces[i][2] += fz;
-                        }
-                        synchronized (forces[j]) {
-                            forces[j][0] -= fx;
-                            forces[j][1] -= fy;
-                            forces[j][2] -= fz;
-                        }
-                    }
-                }
-            });
-            threads[t].start();
-        }
-        for (Thread t : threads) try { t.join(); } catch (InterruptedException ignored) {}
-        return Arrays.stream(forces).toList();
-    }
+//    public static List<double[]> computeForcesParallelChunked(List<Particle> particles) {
+//        int n = particles.size();
+//        double[][] forces = new double[n][3];
+//        int nThreads = Runtime.getRuntime().availableProcessors();
+//        int chunk = (n + nThreads - 1) / nThreads;
+//
+//        Thread[] threads = new Thread[nThreads];
+//        for (int t = 0; t < nThreads; t++) {
+//            final int start = t * chunk;
+//            final int end = Math.min(start + chunk, n);
+//            threads[t] = new Thread(() -> {
+//                for (int i = start; i < end; i++) {
+//                    Particle pi = particles.get(i);
+//                    for (int j = i + 1; j < n; j++) {
+//                        Particle pj = particles.get(j);
+//
+//                        double dx = pi.getX() - pj.getX();
+//                        double dy = pi.getY() - pj.getY();
+//                        double dz = pi.getZ() - pj.getZ();
+//
+//                        double dist2 = dx*dx + dy*dy + dz*dz + H*H;
+//                        double dist = Math.sqrt(dist2);
+//                        double dist3 = dist2 * dist;
+//                        double factor = -G * pi.getMass() * pj.getMass() / dist3;
+//
+//                        double fx = factor * dx;
+//                        double fy = factor * dy;
+//                        double fz = factor * dz;
+//
+//                        synchronized (forces[i]) {
+//                            forces[i][0] += fx;
+//                            forces[i][1] += fy;
+//                            forces[i][2] += fz;
+//                        }
+//                        synchronized (forces[j]) {
+//                            forces[j][0] -= fx;
+//                            forces[j][1] -= fy;
+//                            forces[j][2] -= fz;
+//                        }
+//                    }
+//                }
+//            });
+//            threads[t].start();
+//        }
+//        for (Thread t : threads) try { t.join(); } catch (InterruptedException ignored) {}
+//        return Arrays.stream(forces).toList();
+//    }
 
     public static List<double[]> computeForcesParallelBetter(List<Particle> particles) {
         final int N = particles.size();
@@ -120,265 +120,265 @@ public class GalaxyIntegrator {
         return forces;
     }
 
-    public static List<double[]> computeForcesParallelIntStream(List<Particle> particles) {
-        int n = particles.size();
-        double[][] forces = new double[n][3];
-
-        // Cada thread tiene su acumulador local
-        ThreadLocal<double[][]> localForces = ThreadLocal.withInitial(() -> new double[n][3]);
-
-        IntStream.range(0, n - 1).parallel().forEach(i -> {
-            double[][] fLocal = localForces.get();
-            Particle pi = particles.get(i);
-            for (int j = i + 1; j < n; j++) {
-                Particle pj = particles.get(j);
-
-                double dx = pi.getX() - pj.getX();
-                double dy = pi.getY() - pj.getY();
-                double dz = pi.getZ() - pj.getZ();
-
-                double dist2 = dx * dx + dy * dy + dz * dz + H * H;
-                double dist3 = dist2 * Math.sqrt(dist2);
-                double factor = -G * pi.getMass() * pj.getMass() / dist3;
-
-                double fx = factor * dx;
-                double fy = factor * dy;
-                double fz = factor * dz;
-
-                fLocal[i][0] += fx;
-                fLocal[i][1] += fy;
-                fLocal[i][2] += fz;
-                fLocal[j][0] -= fx;
-                fLocal[j][1] -= fy;
-                fLocal[j][2] -= fz;
-            }
-        });
-
-        // Reducción: sumar los acumuladores de todos los threads
-        List<double[][]> allLocals = ForkJoinPool.commonPool()
-                .submit(() -> IntStream.range(0, Runtime.getRuntime().availableProcessors())
-                        .mapToObj(i -> localForces.get())
-                        .toList())
-                .join();
-
-        for (double[][] lf : allLocals) {
-            for (int i = 0; i < n; i++) {
-                forces[i][0] += lf[i][0];
-                forces[i][1] += lf[i][1];
-                forces[i][2] += lf[i][2];
-            }
-        }
-
-        return Arrays.asList(forces);
-    }
-
-
-    static public List<double[]> computeForces(List<Particle> particles) {
-      List<double[]> forces = new ArrayList<>();
-      List<List<double[]>> interParticleForces = new ArrayList<>();
-      for (int i = 0; i < particles.size() - 1; ++i) {
-        Particle pi = particles.get(i);
-        List<double[]> piForces = new ArrayList<>();
-
-        for (int j = i + 1; j < particles.size(); ++j) {
-          Particle pj = particles.get(j);
-
-          double dx = pi.getX() - pj.getX();
-          double dy = pi.getY() - pj.getY();
-          double dz = pi.getZ() - pj.getZ();
-
-          double dist2 = dx * dx + dy * dy + dz * dz + H * H;
-          double dist3 = dist2 * Math.sqrt(dist2);
-
-          double factor = -G * pi.getMass() * pj.getMass() / dist3;
-
-          piForces.add(new double[] { factor * dx, factor * dy, factor * dz });
-        }
-        interParticleForces.add(piForces);
-      }
-      // [
-      // p0: [p1, p2, p3, p4, p5],
-      // p1: [p2, p3, p4, p5],
-      // p2: [p3, p4, p5],
-      // p3: [p4, p5],
-      // p4: [p5],
-      // ]
-      for (int i = 0; i < particles.size(); ++i) {
-        var totalForce = new double[] { 0, 0, 0 };
-        if (i < particles.size() - 1) {
-          var forces1 = interParticleForces.get(i);
-          for (var force : forces1) {
-            totalForce[0] += force[0];
-            totalForce[1] += force[1];
-            totalForce[2] += force[2];
-          }
-        }
-        for (int j = i - 1; j >= 0; --j) {
-          var forces2 = interParticleForces.get(j);
-          var force = forces2.get(i - j - 1);
-          totalForce[0] -= force[0];
-          totalForce[1] -= force[1];
-          totalForce[2] -= force[2];
-        }
-        forces.add(totalForce);
-      }
-
-      return forces;
-    }
-
-    @Deprecated
-    static public double[] computeForce(Particle pi, List<Particle> particles) {
-        double fx = 0, fy = 0, fz = 0;
-
-        for (Particle pj : particles) {
-            if (pi.getId() == pj.getId()) continue;
-
-            double dx = pi.getX() - pj.getX();
-            double dy = pi.getY() - pj.getY();
-            double dz = pi.getZ() - pj.getZ();
-
-            double dist2 = dx * dx + dy * dy + dz * dz + H * H;
-            double dist3 = Math.pow(dist2, 1.5);
-
-            double factor = -G * pi.getMass() * pj.getMass() / dist3;
-
-            fx += factor * dx;
-            fy += factor * dy;
-            fz += factor * dz;
-        }
-
-        return new double[]{fx, fy, fz};
-    }
-
-    static public void updateParticlesBeeman(List<Particle> particles, double dt,
-        // Paso de integración con Beeman
-        List<double[]> prevAccelerations) {
-      // Aceleraciones actuales
-      List<double[]> accNow = new ArrayList<>();
-      var forces = computeForces(particles);
-      for (int i = 0; i < particles.size(); ++i) {
-        var f = forces.get(i);
-        var p = particles.get(i);
-        accNow.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
-      }
-
-      // Actualizar posiciones
-      for (int i = 0; i < particles.size(); i++) {
-        Particle p = particles.get(i);
-        double[] aNow = accNow.get(i);
-        double[] aPrev = prevAccelerations.get(i);
-
-        double newX = p.getX() + p.getVx() * dt + (2.0 / 3.0) * aNow[0] * dt * dt - (1.0 / 6.0) * aPrev[0] * dt * dt;
-        double newY = p.getY() + p.getVy() * dt + (2.0 / 3.0) * aNow[1] * dt * dt - (1.0 / 6.0) * aPrev[1] * dt * dt;
-        double newZ = p.getZ() + p.getVz() * dt + (2.0 / 3.0) * aNow[2] * dt * dt - (1.0 / 6.0) * aPrev[2] * dt * dt;
-
-        p.setPosition(newX, newY, newZ);
-      }
-
-      // Aceleraciones futuras (con posiciones nuevas)
-      List<double[]> accNext = new ArrayList<>();
-      forces = computeForces(particles);
-      for (int i = 0; i < particles.size(); ++i) {
-        var f = forces.get(i);
-        var p = particles.get(i);
-        accNext.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
-      }
-
-      // Actualizar velocidades
-      for (int i = 0; i < particles.size(); i++) {
-        Particle p = particles.get(i);
-        double[] aPrev = prevAccelerations.get(i);
-        double[] aNow = accNow.get(i);
-        double[] aNext = accNext.get(i);
-
-        double newVx = p.getVx() + (1.0 / 3.0) * aNext[0] * dt + (5.0 / 6.0) * aNow[0] * dt - (1.0 / 6.0) * aPrev[0] * dt;
-        double newVy = p.getVy() + (1.0 / 3.0) * aNext[1] * dt + (5.0 / 6.0) * aNow[1] * dt - (1.0 / 6.0) * aPrev[1] * dt;
-        double newVz = p.getVz() + (1.0 / 3.0) * aNext[2] * dt + (5.0 / 6.0) * aNow[2] * dt - (1.0 / 6.0) * aPrev[2] * dt;
-
-        p.setVelocity(newVx, newVy, newVz);
-      }
-
-      // Importante: devolver accNow como "prev" para el próximo paso
-      prevAccelerations.clear();
-      prevAccelerations.addAll(accNow);
-      //
-    }
-
-
-    // Velocity-Verlet
-    @Deprecated
-    public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
-
-        // 1. Calcular fuerzas actuales
-        List<double[]> fNow = computeForces(particles);
-
-        // 2. Actualizar posiciones en el lugar
-        for (int i = 0; i < particles.size(); i++) {
-            Particle p = particles.get(i);
-            double[] f = fNow.get(i);
-            double ax = f[0] / p.getMass();
-            double ay = f[1] / p.getMass();
-            double az = f[2] / p.getMass();
-
-            p.setPosition(
-                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
-                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
-                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
-            );
-        }
-
-        // 3. Calcular nuevas fuerzas con posiciones actualizadas
-        List<double[]> fNext = computeForces(particles);
-
-        // 4. Actualizar velocidades
-        for (int i = 0; i < particles.size(); i++) {
-            Particle p = particles.get(i);
-            double[] f0 = fNow.get(i);
-            double[] f1 = fNext.get(i);
-
-            p.setVelocity(
-                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
-                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
-                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
-            );
-        }
-    }
-
-    public static void updateParticlesVelocityVerletParallel(List<Particle> particles, double dt) {
-
-        // 1. Fuerzas actuales
-        List<double[]> fNow = computeForcesParallelBetter(particles);
-
-        // 2. Actualizar posiciones
-        IntStream.range(0, particles.size()).parallel().forEach(i -> {
-            Particle p = particles.get(i);
-            double[] f = fNow.get(i);
-            double ax = f[0] / p.getMass();
-            double ay = f[1] / p.getMass();
-            double az = f[2] / p.getMass();
-
-            p.setPosition(
-                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
-                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
-                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
-            );
-        });
-
-        // 3. Fuerzas nuevas
-        List<double[]> fNext = computeForcesParallelBetter(particles);
-
-        // 4. Actualizar velocidades
-        IntStream.range(0, particles.size()).parallel().forEach(i -> {
-            Particle p = particles.get(i);
-            double[] f0 = fNow.get(i);
-            double[] f1 = fNext.get(i);
-            p.setVelocity(
-                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
-                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
-                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
-            );
-        });
-    }
+//    public static List<double[]> computeForcesParallelIntStream(List<Particle> particles) {
+//        int n = particles.size();
+//        double[][] forces = new double[n][3];
+//
+//        // Cada thread tiene su acumulador local
+//        ThreadLocal<double[][]> localForces = ThreadLocal.withInitial(() -> new double[n][3]);
+//
+//        IntStream.range(0, n - 1).parallel().forEach(i -> {
+//            double[][] fLocal = localForces.get();
+//            Particle pi = particles.get(i);
+//            for (int j = i + 1; j < n; j++) {
+//                Particle pj = particles.get(j);
+//
+//                double dx = pi.getX() - pj.getX();
+//                double dy = pi.getY() - pj.getY();
+//                double dz = pi.getZ() - pj.getZ();
+//
+//                double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+//                double dist3 = dist2 * Math.sqrt(dist2);
+//                double factor = -G * pi.getMass() * pj.getMass() / dist3;
+//
+//                double fx = factor * dx;
+//                double fy = factor * dy;
+//                double fz = factor * dz;
+//
+//                fLocal[i][0] += fx;
+//                fLocal[i][1] += fy;
+//                fLocal[i][2] += fz;
+//                fLocal[j][0] -= fx;
+//                fLocal[j][1] -= fy;
+//                fLocal[j][2] -= fz;
+//            }
+//        });
+//
+//        // Reducción: sumar los acumuladores de todos los threads
+//        List<double[][]> allLocals = ForkJoinPool.commonPool()
+//                .submit(() -> IntStream.range(0, Runtime.getRuntime().availableProcessors())
+//                        .mapToObj(i -> localForces.get())
+//                        .toList())
+//                .join();
+//
+//        for (double[][] lf : allLocals) {
+//            for (int i = 0; i < n; i++) {
+//                forces[i][0] += lf[i][0];
+//                forces[i][1] += lf[i][1];
+//                forces[i][2] += lf[i][2];
+//            }
+//        }
+//
+//        return Arrays.asList(forces);
+//    }
+//
+//
+//    static public List<double[]> computeForces(List<Particle> particles) {
+//      List<double[]> forces = new ArrayList<>();
+//      List<List<double[]>> interParticleForces = new ArrayList<>();
+//      for (int i = 0; i < particles.size() - 1; ++i) {
+//        Particle pi = particles.get(i);
+//        List<double[]> piForces = new ArrayList<>();
+//
+//        for (int j = i + 1; j < particles.size(); ++j) {
+//          Particle pj = particles.get(j);
+//
+//          double dx = pi.getX() - pj.getX();
+//          double dy = pi.getY() - pj.getY();
+//          double dz = pi.getZ() - pj.getZ();
+//
+//          double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+//          double dist3 = dist2 * Math.sqrt(dist2);
+//
+//          double factor = -G * pi.getMass() * pj.getMass() / dist3;
+//
+//          piForces.add(new double[] { factor * dx, factor * dy, factor * dz });
+//        }
+//        interParticleForces.add(piForces);
+//      }
+//      // [
+//      // p0: [p1, p2, p3, p4, p5],
+//      // p1: [p2, p3, p4, p5],
+//      // p2: [p3, p4, p5],
+//      // p3: [p4, p5],
+//      // p4: [p5],
+//      // ]
+//      for (int i = 0; i < particles.size(); ++i) {
+//        var totalForce = new double[] { 0, 0, 0 };
+//        if (i < particles.size() - 1) {
+//          var forces1 = interParticleForces.get(i);
+//          for (var force : forces1) {
+//            totalForce[0] += force[0];
+//            totalForce[1] += force[1];
+//            totalForce[2] += force[2];
+//          }
+//        }
+//        for (int j = i - 1; j >= 0; --j) {
+//          var forces2 = interParticleForces.get(j);
+//          var force = forces2.get(i - j - 1);
+//          totalForce[0] -= force[0];
+//          totalForce[1] -= force[1];
+//          totalForce[2] -= force[2];
+//        }
+//        forces.add(totalForce);
+//      }
+//
+//      return forces;
+//    }
+//
+//    @Deprecated
+//    static public double[] computeForce(Particle pi, List<Particle> particles) {
+//        double fx = 0, fy = 0, fz = 0;
+//
+//        for (Particle pj : particles) {
+//            if (pi.getId() == pj.getId()) continue;
+//
+//            double dx = pi.getX() - pj.getX();
+//            double dy = pi.getY() - pj.getY();
+//            double dz = pi.getZ() - pj.getZ();
+//
+//            double dist2 = dx * dx + dy * dy + dz * dz + H * H;
+//            double dist3 = Math.pow(dist2, 1.5);
+//
+//            double factor = -G * pi.getMass() * pj.getMass() / dist3;
+//
+//            fx += factor * dx;
+//            fy += factor * dy;
+//            fz += factor * dz;
+//        }
+//
+//        return new double[]{fx, fy, fz};
+//    }
+//
+//    static public void updateParticlesBeeman(List<Particle> particles, double dt,
+//        // Paso de integración con Beeman
+//        List<double[]> prevAccelerations) {
+//      // Aceleraciones actuales
+//      List<double[]> accNow = new ArrayList<>();
+//      var forces = computeForces(particles);
+//      for (int i = 0; i < particles.size(); ++i) {
+//        var f = forces.get(i);
+//        var p = particles.get(i);
+//        accNow.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
+//      }
+//
+//      // Actualizar posiciones
+//      for (int i = 0; i < particles.size(); i++) {
+//        Particle p = particles.get(i);
+//        double[] aNow = accNow.get(i);
+//        double[] aPrev = prevAccelerations.get(i);
+//
+//        double newX = p.getX() + p.getVx() * dt + (2.0 / 3.0) * aNow[0] * dt * dt - (1.0 / 6.0) * aPrev[0] * dt * dt;
+//        double newY = p.getY() + p.getVy() * dt + (2.0 / 3.0) * aNow[1] * dt * dt - (1.0 / 6.0) * aPrev[1] * dt * dt;
+//        double newZ = p.getZ() + p.getVz() * dt + (2.0 / 3.0) * aNow[2] * dt * dt - (1.0 / 6.0) * aPrev[2] * dt * dt;
+//
+//        p.setPosition(newX, newY, newZ);
+//      }
+//
+//      // Aceleraciones futuras (con posiciones nuevas)
+//      List<double[]> accNext = new ArrayList<>();
+//      forces = computeForces(particles);
+//      for (int i = 0; i < particles.size(); ++i) {
+//        var f = forces.get(i);
+//        var p = particles.get(i);
+//        accNext.add(new double[] { f[0] / p.getMass(), f[1] / p.getMass(), f[2] / p.getMass() });
+//      }
+//
+//      // Actualizar velocidades
+//      for (int i = 0; i < particles.size(); i++) {
+//        Particle p = particles.get(i);
+//        double[] aPrev = prevAccelerations.get(i);
+//        double[] aNow = accNow.get(i);
+//        double[] aNext = accNext.get(i);
+//
+//        double newVx = p.getVx() + (1.0 / 3.0) * aNext[0] * dt + (5.0 / 6.0) * aNow[0] * dt - (1.0 / 6.0) * aPrev[0] * dt;
+//        double newVy = p.getVy() + (1.0 / 3.0) * aNext[1] * dt + (5.0 / 6.0) * aNow[1] * dt - (1.0 / 6.0) * aPrev[1] * dt;
+//        double newVz = p.getVz() + (1.0 / 3.0) * aNext[2] * dt + (5.0 / 6.0) * aNow[2] * dt - (1.0 / 6.0) * aPrev[2] * dt;
+//
+//        p.setVelocity(newVx, newVy, newVz);
+//      }
+//
+//      // Importante: devolver accNow como "prev" para el próximo paso
+//      prevAccelerations.clear();
+//      prevAccelerations.addAll(accNow);
+//      //
+//    }
+//
+//
+//    // Velocity-Verlet
+//    @Deprecated
+//    public static void updateParticlesVelocityVerlet(List<Particle> particles, double dt) {
+//
+//        // 1. Calcular fuerzas actuales
+//        List<double[]> fNow = computeForces(particles);
+//
+//        // 2. Actualizar posiciones en el lugar
+//        for (int i = 0; i < particles.size(); i++) {
+//            Particle p = particles.get(i);
+//            double[] f = fNow.get(i);
+//            double ax = f[0] / p.getMass();
+//            double ay = f[1] / p.getMass();
+//            double az = f[2] / p.getMass();
+//
+//            p.setPosition(
+//                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
+//                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
+//                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
+//            );
+//        }
+//
+//        // 3. Calcular nuevas fuerzas con posiciones actualizadas
+//        List<double[]> fNext = computeForces(particles);
+//
+//        // 4. Actualizar velocidades
+//        for (int i = 0; i < particles.size(); i++) {
+//            Particle p = particles.get(i);
+//            double[] f0 = fNow.get(i);
+//            double[] f1 = fNext.get(i);
+//
+//            p.setVelocity(
+//                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
+//                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
+//                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
+//            );
+//        }
+//    }
+//
+//    public static void updateParticlesVelocityVerletParallel(List<Particle> particles, double dt) {
+//
+//        // 1. Fuerzas actuales
+//        List<double[]> fNow = computeForcesParallelBetter(particles);
+//
+//        // 2. Actualizar posiciones
+//        IntStream.range(0, particles.size()).parallel().forEach(i -> {
+//            Particle p = particles.get(i);
+//            double[] f = fNow.get(i);
+//            double ax = f[0] / p.getMass();
+//            double ay = f[1] / p.getMass();
+//            double az = f[2] / p.getMass();
+//
+//            p.setPosition(
+//                    p.getX() + p.getVx() * dt + 0.5 * ax * dt * dt,
+//                    p.getY() + p.getVy() * dt + 0.5 * ay * dt * dt,
+//                    p.getZ() + p.getVz() * dt + 0.5 * az * dt * dt
+//            );
+//        });
+//
+//        // 3. Fuerzas nuevas
+//        List<double[]> fNext = computeForcesParallelBetter(particles);
+//
+//        // 4. Actualizar velocidades
+//        IntStream.range(0, particles.size()).parallel().forEach(i -> {
+//            Particle p = particles.get(i);
+//            double[] f0 = fNow.get(i);
+//            double[] f1 = fNext.get(i);
+//            p.setVelocity(
+//                    p.getVx() + 0.5 * dt * (f0[0] + f1[0]) / p.getMass(),
+//                    p.getVy() + 0.5 * dt * (f0[1] + f1[1]) / p.getMass(),
+//                    p.getVz() + 0.5 * dt * (f0[2] + f1[2]) / p.getMass()
+//            );
+//        });
+//    }
 
 
 

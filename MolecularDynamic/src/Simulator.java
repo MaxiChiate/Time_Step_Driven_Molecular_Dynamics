@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -43,14 +44,14 @@ public class Simulator {
             double[][][] predictR = new double[3][][];
 
             switch (scheme) {
-                case BEEMAN :
-                    var forces = GalaxyIntegrator.computeForces(particles);
-                    for (int i = 0; i < particles.size(); ++i) {
-                      var f = forces.get(i);
-                      var p = particles.get(i);
-                      prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
-                    }
-                    break;
+//                case BEEMAN :
+//                    var forces = GalaxyIntegrator.computeForces(particles);
+//                    for (int i = 0; i < particles.size(); ++i) {
+//                      var f = forces.get(i);
+//                      var p = particles.get(i);
+//                      prevAcc.add(new double[]{f[0]/p.getMass(), f[1]/p.getMass(), f[2]/p.getMass()});
+//                    }
+//                    break;
 
                 case GEAR_PREDICTOR_CORRECTOR_ORDER_5:
                     GalaxyIntegrator.initGear(particles, deltaT, r, predictR);
@@ -81,8 +82,8 @@ public class Simulator {
 
                 switch (scheme) {
 //                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerlet(particles, deltaT);
-                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerletParallel(particles, deltaT);
-                    case BEEMAN -> GalaxyIntegrator.updateParticlesBeeman(particles, deltaT, prevAcc);
+//                    case VERLET -> GalaxyIntegrator.updateParticlesVelocityVerletParallel(particles, deltaT);
+//                    case BEEMAN -> GalaxyIntegrator.updateParticlesBeeman(particles, deltaT, prevAcc);
                     case GEAR_PREDICTOR_CORRECTOR_ORDER_5 -> GalaxyIntegrator.updateParticlesGear5(particles, deltaT, r, predictR);
                 }
 
@@ -120,8 +121,13 @@ public class Simulator {
         }
         Instant start = Instant.now();
 
-//        while(N<=2000) {
-//        for(double dt = deltaT; dt <= 0.009; dt *= 10) {
+        //TODO N = 600 it 5 (?), 800 it 7, 1300 it 2
+//        while(N<=2000) {Instant startN = Instant.now();
+//        double [] betweenTimes = {1.0, 2.0, 5.0, 8.0};
+//        for(double dt = deltaT; dt < 0.1; dt *= 10) {
+
+//            for(double bt : betweenTimes) {
+//                if(bt < 1.5 && dt < 0.00002) continue;
             for (int i = 0; i < iterations; i++) {
                 InputParser parser = new InputParser(inputDir + "/" + mode + "/N" + String.format("%04d", N) + "/input_N" + N + "_" + String.format("%04d", i) + ".csv", N);
                 ArrayList<Particle> particles = parser.parseInputs();
@@ -133,13 +139,15 @@ public class Simulator {
                 Simulator s = new Simulator(particles, scheme, deltaT, maxT, fileName, targetOutputs);
 //                Simulator s = new Simulator(particles, scheme, dt, maxT, fileName);
                 System.out.printf("\nIteration " + (i + 1) + " completed.");
-            }
-//        }
-//            N+=100;
-//        }
+//            }
+//
+//            N+=100;Instant endN = Instant.now();
+//                    ;Duration elapsedN = Duration.between(startN, endN);System.out.printf("Tiempo transcurrido para N="+N+": %02d:%02d:%02d%n", elapsedN.toHours(), elapsedN.toMinutesPart(), elapsedN.toSecondsPart());
 
+        }
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
+
 
         long hours = elapsed.toHours();
         long minutes = elapsed.toMinutesPart();
