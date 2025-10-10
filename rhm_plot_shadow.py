@@ -6,7 +6,7 @@ import argparse
 import re
 
 #### USAGE:
-# python3 rhm_plot_shadow.py --base MolecularDynamic/outputs/single/gear_order_5 --save
+# python3 rhm_plot_shadow_stationary.py --base MolecularDynamic/outputs/single/gear_order_5 --save
 
 def load_analysis_file(filename: str):
     """Carga archivo de análisis con columnas: time, energy, rhm, tStar"""
@@ -59,9 +59,10 @@ def analyze_directory(path: Path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Graficar rhm(t) con banda de desvío estándar")
+    ap = argparse.ArgumentParser(description="Graficar rhm(t) con sombra y zona estacionaria")
     ap.add_argument("--base", required=True, help="Directorio base con subcarpetas N####")
     ap.add_argument("--save", action="store_true", help="Guardar gráficos en images/")
+    ap.add_argument("--frac", type=float, default=0.7, help="Fracción inicial del tiempo a considerar no estacionaria (por defecto 0.7)")
     args = ap.parse_args()
 
     base = Path(args.base)
@@ -85,16 +86,24 @@ def main():
         plt.fill_between(times, mean_rhm - std_rhm, mean_rhm + std_rhm,
                          color=color, alpha=0.25, label="Desvío estándar")
 
+        # Línea vertical que marca el inicio de la zona estacionaria
+        frac = args.frac
+        idx_start = int(len(times) * frac)
+        t_stationary = times[idx_start]
+        plt.axvline(t_stationary, color="C3", ls="--", lw=1,
+                    label="Estacionario")
+
         plt.xlabel("Tiempo")
-        plt.ylabel("Radio de media masa")
+        plt.ylabel(r"$\langle r_{hm} \rangle$")
+
         plt.grid(True, alpha=0.4)
         plt.legend()
         plt.tight_layout()
 
         if args.save:
-            plt.savefig(out_dir / f"rhm_shadow_N{N}.png", dpi=150)
+            plt.savefig(out_dir / f"rhm_stationary_N{N}.png", dpi=150)
             plt.close()
-            print(f"[OK] Guardado: images/rhm_shadow_N{N}.png")
+            print(f"[OK] Guardado: images/rhm_stationary_N{N}.png (t_estacionario = {t_stationary:.2f})")
         else:
             plt.show()
 
