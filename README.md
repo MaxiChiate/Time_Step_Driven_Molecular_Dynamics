@@ -71,8 +71,8 @@ java -cp out/production/SDS4 Simulator 500 1 ./MolecularDynamic/inputs ./Molecul
 # Requires ffmpeg for mp4 export
 
 # Visualizing single system:
-python3 visualizer.py MolecularDynamic/outputs/single/gear_order_5/N1000/output_N1000_single_dt0.00010_t50_0000.csv --fps 30 --export
+python3 visualizer.py MolecularDynamic/outputs/single/gear_order_5/N1000/output_N1000_single_dt0.00010_t50_0000.csv --fps 30 --mp4
 
 # Visualizing clusters (uses --mode clusters for pink/blue coloring):
-python3 visualizer.py MolecularDynamic/outputs/clusters/gear_order_5/N0500/output_N500_clusters_dt0.00010_t50_0000.csv --mode clusters --fps 30 --export
+python3 visualizer.py MolecularDynamic/outputs/clusters/gear_order_5/N0500/output_N500_clusters_dt0.00010_t50_0000.csv --mode clusters --fps 30 --mp4
 ```
