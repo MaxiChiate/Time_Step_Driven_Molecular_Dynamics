@@ -27,14 +27,12 @@ The simulator provides a robust framework for N-body gravitational simulations, 
   Full methodology, equations, plots, and quantitative analysis are documented in the slides used for the oral defense:  
   `analysis/SdS_TP4_2025Q2G02_Presentación.pdf`
 
-  The presentation includes direct links to all simulation videos (YouTube/Vimeo).
+- **Simulation Videos**
+  - **Two-cluster collision — Gear Predictor-Corrector (Order 5)**  
+    https://youtu.be/3yjdBzG9-yQ  
 
-- **Simulation Videos**  
-  Animations illustrating the dynamical evolution and clustering behavior of the system are linked inside the presentation:
-  - Two-cluster collision using **Gear Predictor-Corrector (Order 5)**
-  - Two-cluster collision using **Velocity Verlet**
+  The video shows the time evolution of two initially separated gravitational clusters, highlighting collapse, interaction, and post-collision relaxation under a high-order integration scheme.
 
-  Videos show particle trajectories, collapse dynamics, and post-collision relaxation for different integration schemes and parameters.
 
 ---
 
